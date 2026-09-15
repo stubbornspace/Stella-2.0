@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: #f1f1ef;
+    --foreground: #001f3d;
+    --card: #fafbf7;
+    --card-foreground: #001f3d;
+    --popover: #ffffff;
+    --popover-foreground: #001f3d;
+    --primary: #296379;
+    --primary-foreground: #f8f8f4;
+    --secondary: #e3ebe8;
+    --secondary-foreground: #001f3d;
+    --muted: #f7f6f1;
+    --muted-foreground: #56677d;
+    --accent: #f3ecd2;
+    --accent-foreground: #001f3d;
+    --destructive: #b84b47;
+    --border: #d8ddd9;
+    --input: #d8ddd9;
+    --ring: #296379;
+    --chart-1: #296379;
+    --chart-2: #c6a637;
+    --chart-3: #001f3d;
+    --chart-4: #6e8f8c;
+    --chart-5: #d9c57a;
+    --radius: 0.625rem;
+    --sidebar: #f7f6f1;
+    --sidebar-foreground: #001f3d;
+    --sidebar-primary: #296379;
+    --sidebar-primary-foreground: #f8f8f4;
+    --sidebar-accent: #f3ecd2;
+    --sidebar-accent-foreground: #001f3d;
+    --sidebar-border: #d8ddd9;
+    --sidebar-ring: #296379;
+}
+
+.dark {
+    --background: #001f3d;
+    --foreground: #f1f1ef;
+    --card: #0f2f4a;
+    --card-foreground: #f1f1ef;
+    --popover: #163651;
+    --popover-foreground: #f1f1ef;
+    --primary: #c6a637;
+    --primary-foreground: #001f3d;
+    --secondary: #163651;
+    --secondary-foreground: #f1f1ef;
+    --muted: #173754;
+    --muted-foreground: #c7d0d8;
+    --accent: #2a5668;
+    --accent-foreground: #f1f1ef;
+    --destructive: #e27672;
+    --border: rgb(241 241 239 / 12%);
+    --input: rgb(241 241 239 / 15%);
+    --ring: #c6a637;
+    --chart-1: #c6a637;
+    --chart-2: #4f8aa0;
+    --chart-3: #f1f1ef;
+    --chart-4: #7aa39e;
+    --chart-5: #e0cb86;
+    --sidebar: #0f2f4a;
+    --sidebar-foreground: #f1f1ef;
+    --sidebar-primary: #c6a637;
+    --sidebar-primary-foreground: #001f3d;
+    --sidebar-accent: #2a5668;
+    --sidebar-accent-foreground: #f1f1ef;
+    --sidebar-border: rgb(241 241 239 / 12%);
+    --sidebar-ring: #c6a637;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100svh;
+  }
+  html {
+    @apply font-sans;
+  }
+  #root {
+    min-height: 100svh;
+  }
+}

@@ -1,0 +1,886 @@
+<title>Stella Patient Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+
+<style>
+  :root{
+    --ground:#fbfaf5;
+    --surface:#ffffff;
+    --surface-2:#f4f2ea;
+    --ink:#23262d;
+    --muted:#6c7280;
+    --line:#e8e4d8;
+    --line-soft:#f0ede3;
+    --navy:#0e2033;
+    --navy-2:#17304a;
+    --navy-ink:#c9d4de;
+    --navy-ink-dim:#7f93a5;
+    --gold:#c5a538;
+    --gold-deep:#9c8021;
+    --good:#2f8f6b;
+    --warn:#c1802a;
+    --flat:#8a92a0;
+    --chart-rt:#3f6fa3;
+    --chart-rt-fill:rgba(63,111,163,.13);
+    --chart-acc:#b9962f;
+    --band:rgba(63,111,163,.09);
+    --shadow:0 1px 2px rgba(20,24,30,.04), 0 12px 34px -14px rgba(20,24,30,.18);
+    --focus:#3f6fa3;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#12161d;
+      --surface:#1b212b;
+      --surface-2:#232b37;
+      --ink:#e7e9ee;
+      --muted:#9aa3b2;
+      --line:#2c3340;
+      --line-soft:#242b36;
+      --navy:#0b1a2a;
+      --navy-2:#15293f;
+      --navy-ink:#c9d4de;
+      --navy-ink-dim:#7b8ea0;
+      --gold:#d8b84a;
+      --gold-deep:#c9a63f;
+      --good:#54b48c;
+      --warn:#d79b45;
+      --flat:#8a92a0;
+      --chart-rt:#6ea3d6;
+      --chart-rt-fill:rgba(110,163,214,.15);
+      --chart-acc:#d8b84a;
+      --band:rgba(110,163,214,.1);
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 40px -16px rgba(0,0,0,.6);
+      --focus:#6ea3d6;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#12161d; --surface:#1b212b; --surface-2:#232b37; --ink:#e7e9ee;
+    --muted:#9aa3b2; --line:#2c3340; --line-soft:#242b36; --navy:#0b1a2a; --navy-2:#15293f;
+    --navy-ink:#c9d4de; --navy-ink-dim:#7b8ea0; --gold:#d8b84a; --gold-deep:#c9a63f;
+    --good:#54b48c; --warn:#d79b45; --flat:#8a92a0; --chart-rt:#6ea3d6;
+    --chart-rt-fill:rgba(110,163,214,.15); --chart-acc:#d8b84a; --band:rgba(110,163,214,.1);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 40px -16px rgba(0,0,0,.6); --focus:#6ea3d6;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1180px;margin:0 auto;padding:56px 28px 96px}
+  @media (max-width:720px){ .page{padding:36px 16px 64px} }
+
+  /* ---- document head ---- */
+  .doc-head{max-width:70ch}
+  .kicker{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--gold-deep);margin:0 0 14px;
+  }
+  h1{
+    font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:clamp(30px,5vw,44px);
+    line-height:1.08;margin:0 0 16px;text-wrap:balance;letter-spacing:-.01em;
+  }
+  .lede{font-size:17px;color:var(--muted);margin:0 0 22px;text-wrap:pretty}
+  .note{
+    display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--muted);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;max-width:64ch;
+  }
+  .note b{color:var(--ink);font-weight:600}
+  .note svg{flex:none;margin-top:2px;color:var(--gold-deep)}
+
+  /* ---- screen frame ---- */
+  .screens{display:flex;flex-direction:column;gap:64px;margin-top:56px}
+  .screen{margin:0}
+  .screen-cap{display:flex;gap:14px;align-items:baseline;margin:0 0 16px}
+  .screen-cap .idx{
+    font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--gold-deep);
+    font-weight:500;flex:none;padding-top:3px;
+  }
+  .screen-cap h2{
+    font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:22px;margin:0 0 3px;
+    letter-spacing:-.005em;
+  }
+  .screen-cap p{margin:0;font-size:14px;color:var(--muted);max-width:64ch}
+
+  .frame{
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);
+    box-shadow:var(--shadow);
+  }
+  .frame-bar{
+    display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface-2);
+    border-bottom:1px solid var(--line);
+  }
+  .frame-bar i{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none}
+  .frame-bar .url{
+    margin-left:10px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);
+    background:var(--surface);border:1px solid var(--line);border-radius:6px;
+    padding:3px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .frame-body{overflow-x:auto}
+
+  /* ---- app shell (inside a frame) ---- */
+  .app{display:grid;grid-template-columns:196px 1fr;min-width:840px}
+  .side{
+    background:var(--navy);color:var(--navy-ink);padding:18px 14px;display:flex;
+    flex-direction:column;gap:4px;min-height:520px;
+  }
+  .brand{
+    font-family:"Newsreader",Georgia,serif;font-size:20px;font-weight:600;color:#fff;
+    padding:4px 8px 16px;letter-spacing:.01em;
+  }
+  .brand span{color:var(--gold)}
+  .navlink{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    font-size:13.5px;color:var(--navy-ink);text-decoration:none;
+  }
+  .navlink svg{width:15px;height:15px;flex:none;opacity:.8}
+  .navlink.on{background:var(--navy-2);color:#fff}
+  .navlink.on svg{opacity:1;color:var(--gold)}
+  .side .sp{flex:1}
+  .side-foot{
+    border-top:1px solid rgba(255,255,255,.09);padding-top:12px;margin-top:8px;
+    font-size:12px;color:var(--navy-ink-dim);line-height:1.5;
+  }
+  .side-foot b{color:var(--navy-ink);font-weight:500;display:block;font-size:12.5px}
+
+  .main{padding:22px 24px 30px;background:var(--ground);min-width:0}
+  .crumb{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
+    letter-spacing:.03em;margin-bottom:10px}
+  .main-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+    flex-wrap:wrap;margin-bottom:20px}
+  .main-head h3{
+    font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:24px;margin:0;
+    letter-spacing:-.01em;
+  }
+  .main-head .sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .btn{
+    font:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:8px 14px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;
+  }
+  .btn.primary{background:var(--gold);border-color:var(--gold);color:#231d05}
+  .btn.ghost{background:transparent}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .search{
+    flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--surface);
+    border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted);
+  }
+  .search svg{width:14px;height:14px;flex:none}
+  .selpill{
+    font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;
+  }
+  .selpill b{font-weight:600}
+  .selpill svg{width:12px;height:12px;color:var(--muted)}
+
+  /* ---- tiles ---- */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  @media (max-width:900px){ .tiles{grid-template-columns:repeat(2,1fr)} }
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .tile .t-label{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .tile .t-val{
+    font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:26px;margin-top:6px;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .tile .t-val small{font-size:13px;color:var(--muted);font-weight:400;margin-left:3px}
+  .t-delta{display:inline-flex;align-items:center;gap:4px;font-family:"IBM Plex Mono",monospace;
+    font-size:12px;margin-top:8px}
+  .t-delta.good{color:var(--good)}
+  .t-delta.warn{color:var(--warn)}
+  .t-delta.flat{color:var(--flat)}
+  .t-delta svg{width:12px;height:12px}
+
+  /* ---- cards ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px}
+  .card + .card{margin-top:16px}
+  .card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+  .card-head h4{font-size:14px;font-weight:600;margin:0}
+  .card-head .meta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+  .card-note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:820px){ .two-col{grid-template-columns:1fr} }
+
+  /* ---- chart ---- */
+  .chart{width:100%;height:auto;display:block;font-family:"IBM Plex Mono",monospace}
+  .chart .axis{fill:var(--muted);font-size:10px}
+  .chart .axis-unit{fill:var(--muted);font-size:9px;letter-spacing:.08em}
+  .chart .grid{stroke:var(--line-soft)}
+  .chart .band{fill:var(--band)}
+  .chart .rt-area{fill:var(--chart-rt-fill)}
+  .chart .rt-line{fill:none;stroke:var(--chart-rt);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .chart .rt-dot{fill:var(--chart-rt)}
+  .chart .rt-end{fill:var(--surface);stroke:var(--chart-rt);stroke-width:2.5}
+  .chart .acc-line{fill:none;stroke:var(--chart-acc);stroke-width:2;stroke-dasharray:1 0}
+  .chart .acc-dot{fill:var(--chart-acc)}
+  .legend-row{display:flex;gap:18px;margin-top:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .legend-row i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+  .i-rt{background:var(--chart-rt)}
+  .i-acc{background:var(--chart-acc)}
+  .i-band{background:var(--band);height:12px;width:14px;border-radius:3px}
+
+  /* ---- tables ---- */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{
+    text-align:right;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:.05em;
+    text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);
+  }
+  thead th:first-child,tbody td:first-child{text-align:left}
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--line-soft);text-align:right;
+    font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  td.mono,.num{font-family:"IBM Plex Mono",monospace}
+  .rowname{display:flex;align-items:center;gap:9px}
+  .kcap{
+    width:22px;height:22px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);
+    display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;font-size:11px;
+    font-weight:500;flex:none;
+  }
+
+  /* ---- chips ---- */
+  .chip{
+    display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;
+    padding:2px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap;
+  }
+  .chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .chip.good{color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+  .chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+  .chip.flat{color:var(--flat);background:color-mix(in srgb,var(--flat) 14%,transparent)}
+  .chip.new{color:var(--chart-rt);background:color-mix(in srgb,var(--chart-rt) 12%,transparent)}
+
+  /* ---- patient list ---- */
+  .plist td{padding:11px 10px}
+  .spark{width:104px;height:30px;display:block}
+  .spark path.s-line{fill:none;stroke:var(--chart-rt);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .spark circle{fill:var(--chart-rt)}
+
+  /* ---- by-letter bars ---- */
+  .lbars{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .lbar{display:grid;grid-template-columns:26px 1fr 44px 66px;gap:10px;align-items:center;font-size:12.5px}
+  .lbar .track{height:9px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+  .lbar .fill{height:100%;border-radius:5px;background:var(--chart-acc)}
+  .lbar .num{font-family:"IBM Plex Mono",monospace;text-align:right;color:var(--muted)}
+  .lbar .kcap{width:24px;height:24px}
+
+  .summary-line{
+    display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    margin-top:2px;
+  }
+  .summary-line svg{flex:none;margin-top:2px;color:var(--good)}
+
+  .settings-recap{
+    display:flex;flex-wrap:wrap;gap:8px 10px;font-size:12px;color:var(--muted);
+    font-family:"IBM Plex Mono",monospace;
+  }
+  .settings-recap span{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+
+  footer{margin-top:64px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);
+    padding-top:18px;max-width:70ch}
+
+  @media (prefers-reduced-motion:no-preference){
+    a,.btn{transition:none}
+  }
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+</style>
+
+<div class="page">
+  <header class="doc-head">
+    <p class="kicker">Stella · Interface mockup</p>
+    <h1>Reviewing patient data &amp; trends</h1>
+    <p class="lede">
+      Illustrative screens for the hosted service where a clinician signs in,
+      follows each child's exercise sessions over time, and where the practice
+      owner sees activity across every clinic. These are static mockups to react
+      to &mdash; layout and wording, not final visuals.
+    </p>
+    <p class="note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <span><b>Sample data, not real patients.</b> Every name, code and number
+      here is invented. Figures are shown as <b>performance measures</b>
+      (reaction time, accuracy, consistency) &mdash; never as a clinical or
+      developmental outcome.</span>
+    </p>
+  </header>
+
+  <div class="screens">
+
+    <!-- ============ SCREEN 1 — PATIENT LIST ============ -->
+    <figure class="screen">
+      <figcaption class="screen-cap">
+        <span class="idx">01</span>
+        <span>
+          <h2>Patient list</h2>
+          <p>The clinician's own caseload. Each row shows the last session, how
+          many sessions on record, and a quick read of recent reaction time.
+          The status tag flags who to look at next.</p>
+        </span>
+      </figcaption>
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i>
+          <span class="url">app.stellaempowers.com/patients</span>
+        </div>
+        <div class="frame-body">
+          <div class="app">
+            <nav class="side">
+              <div class="brand">Stel<span>la</span></div>
+              <a class="navlink on" href="#s1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>Patients</a>
+              <a class="navlink" href="#s5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 14l3-4 3 3 4-6"/></svg>Reports</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg>Devices</a>
+              <div class="sp"></div>
+              <div class="side-foot">
+                <b>Dr. Maya Okafor</b>
+                Riverside Pediatric Therapy
+              </div>
+            </nav>
+            <div class="main">
+              <div class="crumb">PATIENTS</div>
+              <div class="main-head">
+                <div>
+                  <h3>Your patients</h3>
+                  <div class="sub">14 active &middot; 3 with a session this week</div>
+                </div>
+                <button class="btn primary">Add patient</button>
+              </div>
+              <div class="toolbar">
+                <div class="search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+                  Search by name or code
+                </div>
+                <div class="selpill"><b>Activity:</b> All
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+                <div class="selpill"><b>Sort:</b> Last session
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              </div>
+
+              <div class="card" style="padding:4px 6px">
+                <table class="plist">
+                  <thead>
+                    <tr>
+                      <th>Patient</th><th>Code</th><th>Last session</th>
+                      <th>Sessions</th><th>Median reaction</th>
+                      <th style="text-align:left">Recent</th><th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">JR</span>Jonah R.</div></td>
+                      <td class="mono">PT-042</td>
+                      <td>Today, 9:40</td>
+                      <td class="num">18</td>
+                      <td class="num">1,180 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 8 L19 12 L36 7 L53 18 L70 20 L87 25 L102 27"/><circle cx="102" cy="27" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip good">Faster &amp; steadier</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">AL</span>Amara L.</div></td>
+                      <td class="mono">PT-051</td>
+                      <td>Today, 8:15</td>
+                      <td class="num">7</td>
+                      <td class="num">1,540 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 14 L19 11 L36 16 L53 13 L70 15 L87 12 L102 14"/><circle cx="102" cy="14" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip flat">Holding steady</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">DP</span>Diego P.</div></td>
+                      <td class="mono">PT-039</td>
+                      <td>Yesterday</td>
+                      <td class="num">24</td>
+                      <td class="num">1,010 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 10 L19 9 L36 12 L53 8 L70 10 L87 7 L102 6"/><circle cx="102" cy="6" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip good">Faster &amp; steadier</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">SK</span>Sofia K.</div></td>
+                      <td class="mono">PT-060</td>
+                      <td>2 days ago</td>
+                      <td class="num">3</td>
+                      <td class="num">1,720 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 16 L36 14 L70 17 L102 15"/><circle cx="102" cy="15" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip new">New &mdash; 3 sessions</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">EN</span>Eli N.</div></td>
+                      <td class="mono">PT-044</td>
+                      <td>6 days ago</td>
+                      <td class="num">12</td>
+                      <td class="num">1,390 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 9 L19 11 L36 10 L53 14 L70 13 L87 18 L102 20"/><circle cx="102" cy="20" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip warn">Slower this week</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="rowname"><span class="kcap">MT</span>Mia T.</div></td>
+                      <td class="mono">PT-036</td>
+                      <td>8 days ago</td>
+                      <td class="num">21</td>
+                      <td class="num">1,120 ms</td>
+                      <td style="text-align:left">
+                        <svg class="spark" viewBox="0 0 104 30"><path class="s-line" d="M2 12 L19 10 L36 13 L53 9 L70 11 L87 9 L102 10"/><circle cx="102" cy="10" r="2.4"/></svg>
+                      </td>
+                      <td style="text-align:right"><span class="chip flat">Holding steady</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ============ SCREEN 2 — PATIENT OVERVIEW ============ -->
+    <figure class="screen" id="s2">
+      <figcaption class="screen-cap">
+        <span class="idx">02</span>
+        <span>
+          <h2>Patient overview</h2>
+          <p>One child's page. Headline numbers first, then the reaction-time
+          trend across recent sessions, then the session list. The shaded band
+          on the chart is the child's typical range &mdash; a narrower band means
+          steadier timing.</p>
+        </span>
+      </figcaption>
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i>
+          <span class="url">app.stellaempowers.com/patients/PT-042</span>
+        </div>
+        <div class="frame-body">
+          <div class="app">
+            <nav class="side">
+              <div class="brand">Stel<span>la</span></div>
+              <a class="navlink on" href="#s2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>Patients</a>
+              <a class="navlink" href="#s5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 14l3-4 3 3 4-6"/></svg>Reports</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg>Devices</a>
+              <div class="sp"></div>
+              <div class="side-foot"><b>Dr. Maya Okafor</b>Riverside Pediatric Therapy</div>
+            </nav>
+            <div class="main">
+              <div class="crumb">PATIENTS / JONAH R. (PT-042)</div>
+              <div class="main-head">
+                <div>
+                  <h3>Jonah R.</h3>
+                  <div class="sub">Code PT-042 &middot; age band 5&ndash;7 &middot; 18 sessions since 12 Feb 2026</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn ghost">Export all (CSV)</button>
+                  <a class="btn" href="#s3" style="text-decoration:none">Open trends</a>
+                </div>
+              </div>
+
+              <div class="tiles">
+                <div class="tile">
+                  <div class="t-label">Sessions</div>
+                  <div class="t-val">18</div>
+                  <div class="t-delta flat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>3 this week</div>
+                </div>
+                <div class="tile">
+                  <div class="t-label">First-try accuracy</div>
+                  <div class="t-val">82<small>%</small></div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 15 7-7 7 7"/></svg>+14 pts vs. first 3</div>
+                </div>
+                <div class="tile">
+                  <div class="t-label">Median reaction</div>
+                  <div class="t-val">1,180<small>ms</small></div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 9-7 7-7-7"/></svg>&minus;400 ms faster</div>
+                </div>
+                <div class="tile">
+                  <div class="t-label">Consistency (IQR)</div>
+                  <div class="t-val">320<small>ms</small></div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 9-7 7-7-7"/></svg>tighter spread</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h4>Reaction time &mdash; correct presses</h4>
+                  <span class="meta">last 12 sessions &middot; Letter Target</span>
+                </div>
+                <svg class="chart" viewBox="0 0 720 250" role="img" aria-label="Reaction time trending down from about 1580 ms to 1180 ms over 12 sessions.">
+                  <!-- gridlines + y labels -->
+                  <line class="grid" x1="48" y1="35.3" x2="704" y2="35.3"/>
+                  <line class="grid" x1="48" y1="112.4" x2="704" y2="112.4"/>
+                  <line class="grid" x1="48" y1="189.5" x2="704" y2="189.5"/>
+                  <line class="grid" x1="48" y1="228" x2="704" y2="228"/>
+                  <text class="axis" x="40" y="39" text-anchor="end">1600</text>
+                  <text class="axis" x="40" y="116" text-anchor="end">1400</text>
+                  <text class="axis" x="40" y="193" text-anchor="end">1200</text>
+                  <text class="axis-unit" x="48" y="16" text-anchor="start">MS</text>
+                  <!-- typical range band (IQR ~ 1200-1520 early, tighten later; draw a simple sloped band) -->
+                  <path class="band" d="M48,44 L704,150 L704,205 L48,120 Z"/>
+                  <!-- area + line -->
+                  <path class="rt-area" d="M48,43 107.6,66.1 167.3,31.4 226.9,85.4 286.5,96.9 346.2,77.7 405.8,120.1 465.5,131.6 525.1,112.4 584.7,154.8 644.4,174.1 704,197.2 704,228 48,228 Z"/>
+                  <polyline class="rt-line" points="48,43 107.6,66.1 167.3,31.4 226.9,85.4 286.5,96.9 346.2,77.7 405.8,120.1 465.5,131.6 525.1,112.4 584.7,154.8 644.4,174.1 704,197.2"/>
+                  <g class="rt-dot">
+                    <circle cx="48" cy="43" r="2.6"/><circle cx="107.6" cy="66.1" r="2.6"/>
+                    <circle cx="167.3" cy="31.4" r="2.6"/><circle cx="226.9" cy="85.4" r="2.6"/>
+                    <circle cx="286.5" cy="96.9" r="2.6"/><circle cx="346.2" cy="77.7" r="2.6"/>
+                    <circle cx="405.8" cy="120.1" r="2.6"/><circle cx="465.5" cy="131.6" r="2.6"/>
+                    <circle cx="525.1" cy="112.4" r="2.6"/><circle cx="584.7" cy="154.8" r="2.6"/>
+                    <circle cx="644.4" cy="174.1" r="2.6"/>
+                  </g>
+                  <circle class="rt-end" cx="704" cy="197.2" r="4.5"/>
+                  <text class="axis" x="704" y="215" text-anchor="end" fill="var(--chart-rt)">1,180 ms</text>
+                  <!-- x labels -->
+                  <text class="axis" x="48" y="244" text-anchor="middle">S1</text>
+                  <text class="axis" x="226.9" y="244" text-anchor="middle">S4</text>
+                  <text class="axis" x="405.8" y="244" text-anchor="middle">S7</text>
+                  <text class="axis" x="584.7" y="244" text-anchor="middle">S10</text>
+                  <text class="axis" x="704" y="244" text-anchor="end">S12</text>
+                </svg>
+                <div class="legend-row">
+                  <span><i class="i-rt"></i>Median reaction time</span>
+                  <span><i class="i-band"></i>Typical range (middle 50%)</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h4>Recent sessions</h4>
+                  <span class="meta">tap a row for the full breakdown</span></div>
+                <table>
+                  <thead>
+                    <tr><th>Date</th><th>Exercise</th><th>Items</th><th>First-try</th>
+                    <th>Median RT</th><th>Beat</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Today, 9:40</td><td>Letter Target</td><td class="num">8 letters</td>
+                      <td class="num">88%</td><td class="num">1,180 ms</td><td>Metronome 72</td>
+                      <td><a href="#s4" style="color:var(--chart-rt);text-decoration:none">View</a></td></tr>
+                    <tr><td>4 Apr</td><td>Letter Find</td><td class="num">6 words</td>
+                      <td class="num">74%</td><td class="num">1,510 ms</td><td>None</td>
+                      <td><a href="#s4" style="color:var(--chart-rt);text-decoration:none">View</a></td></tr>
+                    <tr><td>2 Apr</td><td>Letter Target</td><td class="num">10 letters</td>
+                      <td class="num">80%</td><td class="num">1,290 ms</td><td>Music 60</td>
+                      <td><a href="#s4" style="color:var(--chart-rt);text-decoration:none">View</a></td></tr>
+                    <tr><td>28 Mar</td><td>Eye Pong</td><td class="num">8 targets</td>
+                      <td class="num">&mdash;</td><td class="num">&mdash;</td><td>Metronome 54</td>
+                      <td><a href="#s4" style="color:var(--chart-rt);text-decoration:none">View</a></td></tr>
+                  </tbody>
+                </table>
+                <p class="card-note">Eye Pong records the light pattern and completion only &mdash; no press timing, no eye-movement measurement.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ============ SCREEN 3 — TRENDS ============ -->
+    <figure class="screen" id="s3">
+      <figcaption class="screen-cap">
+        <span class="idx">03</span>
+        <span>
+          <h2>Trends</h2>
+          <p>A closer look over time, with filters for exercise, date range and
+          background sound. Reaction time and first-try accuracy on the same
+          timeline, plus a per-letter breakdown, and a plain-language read of
+          the last several sessions.</p>
+        </span>
+      </figcaption>
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i>
+          <span class="url">app.stellaempowers.com/patients/PT-042/trends</span>
+        </div>
+        <div class="frame-body">
+          <div class="app">
+            <nav class="side">
+              <div class="brand">Stel<span>la</span></div>
+              <a class="navlink on" href="#s3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>Patients</a>
+              <a class="navlink" href="#s5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 14l3-4 3 3 4-6"/></svg>Reports</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg>Devices</a>
+              <div class="sp"></div>
+              <div class="side-foot"><b>Dr. Maya Okafor</b>Riverside Pediatric Therapy</div>
+            </nav>
+            <div class="main">
+              <div class="crumb">PATIENTS / JONAH R. / TRENDS</div>
+              <div class="main-head">
+                <div><h3>Trends &mdash; Jonah R.</h3>
+                  <div class="sub">18 sessions &middot; 12 Feb &ndash; 11 May 2026</div></div>
+                <button class="btn ghost">Export chart data</button>
+              </div>
+              <div class="toolbar">
+                <div class="selpill"><b>Exercise:</b> Letter Target
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+                <div class="selpill"><b>Range:</b> Last 12 sessions
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+                <div class="selpill"><b>Beat:</b> Any
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              </div>
+
+              <div class="summary-line">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>Over the last 6 sessions, correct responses are on average
+                <b>360&nbsp;ms faster</b> and <b>steadier</b> (spread narrowed from
+                480&nbsp;ms to 320&nbsp;ms), with first-try accuracy up from
+                <b>67% to 82%</b>. Stated as measured performance, not a clinical
+                judgement.</span>
+              </div>
+
+              <div class="card" style="margin-top:16px">
+                <div class="card-head"><h4>Reaction time &amp; first-try accuracy</h4>
+                  <span class="meta">correct presses only</span></div>
+                <svg class="chart" viewBox="0 0 720 250" role="img" aria-label="Reaction time falling and accuracy rising across 12 sessions.">
+                  <line class="grid" x1="48" y1="40" x2="672" y2="40"/>
+                  <line class="grid" x1="48" y1="100" x2="672" y2="100"/>
+                  <line class="grid" x1="48" y1="160" x2="672" y2="160"/>
+                  <line class="grid" x1="48" y1="210" x2="672" y2="210"/>
+                  <text class="axis" x="40" y="44" text-anchor="end">1600</text>
+                  <text class="axis" x="40" y="104" text-anchor="end">1350</text>
+                  <text class="axis" x="40" y="164" text-anchor="end">1100</text>
+                  <text class="axis-unit" x="48" y="24" text-anchor="start">MS</text>
+                  <text class="axis" x="684" y="44" text-anchor="start">90</text>
+                  <text class="axis" x="684" y="104" text-anchor="start">70</text>
+                  <text class="axis" x="684" y="164" text-anchor="start">50</text>
+                  <text class="axis-unit" x="672" y="24" text-anchor="end">%</text>
+                  <!-- RT line (reuse scale: 1650..1050 over y 24..210) -->
+                  <polyline class="rt-line" points="48,52 104,74 161,44 217,92 274,104 330,86 387,126 443,138 500,118 556,158 613,176 672,196"/>
+                  <g class="rt-dot">
+                    <circle cx="48" cy="52" r="2.4"/><circle cx="104" cy="74" r="2.4"/><circle cx="161" cy="44" r="2.4"/>
+                    <circle cx="217" cy="92" r="2.4"/><circle cx="274" cy="104" r="2.4"/><circle cx="330" cy="86" r="2.4"/>
+                    <circle cx="387" cy="126" r="2.4"/><circle cx="443" cy="138" r="2.4"/><circle cx="500" cy="118" r="2.4"/>
+                    <circle cx="556" cy="158" r="2.4"/><circle cx="613" cy="176" r="2.4"/>
+                  </g>
+                  <circle class="rt-end" cx="672" cy="196" r="4"/>
+                  <!-- accuracy line (50..92 over y 160..40) -->
+                  <polyline class="acc-line" points="48,166 104,159 161,168 217,149 274,144 330,151 387,139 443,135 500,142 556,124 613,120 672,116"/>
+                  <g class="acc-dot">
+                    <circle cx="48" cy="166" r="2.4"/><circle cx="104" cy="159" r="2.4"/><circle cx="161" cy="168" r="2.4"/>
+                    <circle cx="217" cy="149" r="2.4"/><circle cx="274" cy="144" r="2.4"/><circle cx="330" cy="151" r="2.4"/>
+                    <circle cx="387" cy="139" r="2.4"/><circle cx="443" cy="135" r="2.4"/><circle cx="500" cy="142" r="2.4"/>
+                    <circle cx="556" cy="124" r="2.4"/><circle cx="613" cy="120" r="2.4"/><circle cx="672" cy="116" r="2.4"/>
+                  </g>
+                  <text class="axis" x="48" y="228" text-anchor="middle">S1</text>
+                  <text class="axis" x="217" y="228" text-anchor="middle">S4</text>
+                  <text class="axis" x="387" y="228" text-anchor="middle">S7</text>
+                  <text class="axis" x="556" y="228" text-anchor="middle">S10</text>
+                  <text class="axis" x="672" y="228" text-anchor="end">S12</text>
+                </svg>
+                <div class="legend-row">
+                  <span><i class="i-rt"></i>Median reaction time (ms, left)</span>
+                  <span><i class="i-acc"></i>First-try accuracy (%, right)</span>
+                </div>
+              </div>
+
+              <div class="two-col" style="margin-top:16px">
+                <div class="card">
+                  <div class="card-head"><h4>By letter</h4><span class="meta">this range</span></div>
+                  <div class="lbars">
+                    <div class="lbar"><span class="kcap">E</span><div class="track"><div class="fill" style="width:91%"></div></div><span>91%</span><span class="num">940 ms</span></div>
+                    <div class="lbar"><span class="kcap">A</span><div class="track"><div class="fill" style="width:88%"></div></div><span>88%</span><span class="num">980 ms</span></div>
+                    <div class="lbar"><span class="kcap">L</span><div class="track"><div class="fill" style="width:84%"></div></div><span>84%</span><span class="num">1,050 ms</span></div>
+                    <div class="lbar"><span class="kcap">O</span><div class="track"><div class="fill" style="width:81%"></div></div><span>81%</span><span class="num">1,120 ms</span></div>
+                    <div class="lbar"><span class="kcap">N</span><div class="track"><div class="fill" style="width:79%"></div></div><span>79%</span><span class="num">1,180 ms</span></div>
+                    <div class="lbar"><span class="kcap">R</span><div class="track"><div class="fill" style="width:75%"></div></div><span>75%</span><span class="num">1,240 ms</span></div>
+                    <div class="lbar"><span class="kcap">S</span><div class="track"><div class="fill" style="width:72%"></div></div><span>72%</span><span class="num">1,320 ms</span></div>
+                    <div class="lbar"><span class="kcap">T</span><div class="track"><div class="fill" style="width:68%"></div></div><span>68%</span><span class="num">1,410 ms</span></div>
+                  </div>
+                  <p class="card-note">Bar = first-try accuracy. Number = median reaction time on that key.</p>
+                </div>
+                <div class="card">
+                  <div class="card-head"><h4>By background sound</h4><span class="meta">all Letter Target</span></div>
+                  <table>
+                    <thead><tr><th>Condition</th><th>Sessions</th><th>First-try</th><th>Median RT</th></tr></thead>
+                    <tbody>
+                      <tr><td>None</td><td class="num">5</td><td class="num">74%</td><td class="num">1,360 ms</td></tr>
+                      <tr><td>Metronome</td><td class="num">7</td><td class="num">80%</td><td class="num">1,240 ms</td></tr>
+                      <tr><td>Music</td><td class="num">6</td><td class="num">78%</td><td class="num">1,300 ms</td></tr>
+                    </tbody>
+                  </table>
+                  <p class="card-note">Descriptive only &mdash; sessions weren't randomised, so this compares conditions, it doesn't test them.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ============ SCREEN 4 — SESSION DETAIL ============ -->
+    <figure class="screen" id="s4">
+      <figcaption class="screen-cap">
+        <span class="idx">04</span>
+        <span>
+          <h2>Session detail</h2>
+          <p>A single session opened up: the settings it ran with, the headline
+          numbers, a per-letter table, and a link to download the raw
+          moment-by-moment event log.</p>
+        </span>
+      </figcaption>
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i>
+          <span class="url">app.stellaempowers.com/patients/PT-042/sessions/S-000481</span>
+        </div>
+        <div class="frame-body">
+          <div class="app">
+            <nav class="side">
+              <div class="brand">Stel<span>la</span></div>
+              <a class="navlink on" href="#s4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>Patients</a>
+              <a class="navlink" href="#s5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 14l3-4 3 3 4-6"/></svg>Reports</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg>Devices</a>
+              <div class="sp"></div>
+              <div class="side-foot"><b>Dr. Maya Okafor</b>Riverside Pediatric Therapy</div>
+            </nav>
+            <div class="main">
+              <div class="crumb">PATIENTS / JONAH R. / SESSION S-000481</div>
+              <div class="main-head">
+                <div><h3>Letter Target &mdash; 11 May 2026, 9:40</h3>
+                  <div class="sub">Completed &middot; 8 letters &middot; 4 min 12 s &middot; device PICO-07</div></div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn ghost">Download events (JSONL)</button>
+                  <button class="btn">Download (CSV)</button>
+                </div>
+              </div>
+
+              <div class="settings-recap">
+                <span>mode: letters</span><span>items: 8</span><span>beat: metronome 72 BPM</span>
+                <span>timeout: off</span><span>retry: until correct</span><span>participant: PT-042</span>
+              </div>
+
+              <div class="tiles" style="margin-top:16px">
+                <div class="tile"><div class="t-label">Completed</div><div class="t-val">8<small>/8</small></div>
+                  <div class="t-delta flat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>all items</div></div>
+                <div class="tile"><div class="t-label">First-try accuracy</div><div class="t-val">88<small>%</small></div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 15 7-7 7 7"/></svg>7 of 8 clean</div></div>
+                <div class="tile"><div class="t-label">Median reaction</div><div class="t-val">1,180<small>ms</small></div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 9-7 7-7-7"/></svg>fastest yet</div></div>
+                <div class="tile"><div class="t-label">Wrong presses / letter</div><div class="t-val">0.25</div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 9-7 7-7-7"/></svg>2 total</div></div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h4>Every letter in this session</h4>
+                  <span class="meta">Go &rarr; correct press</span></div>
+                <table>
+                  <thead><tr><th>#</th><th>Target</th><th>First press</th><th>Reaction</th>
+                    <th>Wrong tries</th><th>Result</th></tr></thead>
+                  <tbody>
+                    <tr><td class="num">1</td><td><span class="kcap">A</span></td><td>A</td><td class="num">1,040 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                    <tr><td class="num">2</td><td><span class="kcap">E</span></td><td>E</td><td class="num">910 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                    <tr><td class="num">3</td><td><span class="kcap">N</span></td><td>M</td><td class="num">1,220 ms</td><td class="num">1</td><td><span class="chip warn">Corrected</span></td></tr>
+                    <tr><td class="num">4</td><td><span class="kcap">L</span></td><td>L</td><td class="num">1,150 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                    <tr><td class="num">5</td><td><span class="kcap">A</span></td><td>A</td><td class="num">980 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                    <tr><td class="num">6</td><td><span class="kcap">S</span></td><td>D</td><td class="num">1,470 ms</td><td class="num">1</td><td><span class="chip warn">Corrected</span></td></tr>
+                    <tr><td class="num">7</td><td><span class="kcap">E</span></td><td>E</td><td class="num">1,090 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                    <tr><td class="num">8</td><td><span class="kcap">T</span></td><td>T</td><td class="num">1,210 ms</td><td class="num">0</td><td><span class="chip good">First try</span></td></tr>
+                  </tbody>
+                </table>
+                <p class="card-note">Only presses on wired keys are recorded. A press on an unwired key can't be detected and is never counted as an error.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ============ SCREEN 5 — OWNER VIEW ============ -->
+    <figure class="screen" id="s5">
+      <figcaption class="screen-cap">
+        <span class="idx">05</span>
+        <span>
+          <h2>Owner view</h2>
+          <p>Your view across every clinic &mdash; how much the keyboards are
+          being used, which devices are online, and totals by clinic. No
+          individual child's identity is needed here.</p>
+        </span>
+      </figcaption>
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i>
+          <span class="url">admin.stellaempowers.com/overview</span>
+        </div>
+        <div class="frame-body">
+          <div class="app">
+            <nav class="side">
+              <div class="brand">Stel<span>la</span> <span style="font-size:11px;color:var(--navy-ink-dim);font-family:'IBM Plex Mono',monospace">admin</span></div>
+              <a class="navlink on" href="#s5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 14l3-4 3 3 4-6"/></svg>Overview</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V9l6-4 6 4v12"/></svg>Clinics</a>
+              <a class="navlink" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg>Devices</a>
+              <div class="sp"></div>
+              <div class="side-foot"><b>You</b>Stella Empowers &mdash; owner</div>
+            </nav>
+            <div class="main">
+              <div class="crumb">OVERVIEW</div>
+              <div class="main-head">
+                <div><h3>Across all clinics</h3><div class="sub">week of 5 May 2026</div></div>
+                <div class="selpill"><b>Period:</b> This week
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              </div>
+
+              <div class="tiles">
+                <div class="tile"><div class="t-label">Clinics</div><div class="t-val">6</div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 15 7-7 7 7"/></svg>+1 this month</div></div>
+                <div class="tile"><div class="t-label">Devices online</div><div class="t-val">9<small>/11</small></div>
+                  <div class="t-delta warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>2 not seen in 3 d</div></div>
+                <div class="tile"><div class="t-label">Sessions this week</div><div class="t-val">148</div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 15 7-7 7 7"/></svg>+22 vs. last</div></div>
+                <div class="tile"><div class="t-label">Active patients</div><div class="t-val">63</div>
+                  <div class="t-delta good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 15 7-7 7 7"/></svg>+7</div></div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h4>Sessions per week</h4><span class="meta">last 10 weeks &middot; all clinics</span></div>
+                <svg class="chart" viewBox="0 0 720 200" role="img" aria-label="Weekly session count rising from about 70 to about 148 over ten weeks.">
+                  <line class="grid" x1="44" y1="30" x2="704" y2="30"/>
+                  <line class="grid" x1="44" y1="90" x2="704" y2="90"/>
+                  <line class="grid" x1="44" y1="150" x2="704" y2="150"/>
+                  <text class="axis" x="36" y="34" text-anchor="end">150</text>
+                  <text class="axis" x="36" y="94" text-anchor="end">100</text>
+                  <text class="axis" x="36" y="154" text-anchor="end">50</text>
+                  <g fill="var(--chart-rt)">
+                    <rect x="52"  y="66"  width="44" height="84"  rx="3"/>
+                    <rect x="118" y="78"  width="44" height="72"  rx="3"/>
+                    <rect x="184" y="60"  width="44" height="90"  rx="3"/>
+                    <rect x="250" y="72"  width="44" height="78"  rx="3"/>
+                    <rect x="316" y="54"  width="44" height="96"  rx="3"/>
+                    <rect x="382" y="48"  width="44" height="102" rx="3"/>
+                    <rect x="448" y="40"  width="44" height="110" rx="3"/>
+                    <rect x="514" y="46"  width="44" height="104" rx="3"/>
+                    <rect x="580" y="34"  width="44" height="116" rx="3"/>
+                  </g>
+                  <rect x="646" y="27" width="44" height="123" rx="3" fill="var(--gold)"/>
+                  <text class="axis" x="52" y="168" text-anchor="start">Mar 3</text>
+                  <text class="axis" x="382" y="168" text-anchor="middle">Apr 7</text>
+                  <text class="axis" x="690" y="168" text-anchor="end">May 5</text>
+                </svg>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h4>By clinic</h4><span class="meta">this week</span></div>
+                <table>
+                  <thead><tr><th>Clinic</th><th>Devices</th><th>Patients</th><th>Sessions</th><th>Last activity</th></tr></thead>
+                  <tbody>
+                    <tr><td>Riverside Pediatric Therapy</td><td class="num">3</td><td class="num">18</td><td class="num">41</td><td>2 h ago</td></tr>
+                    <tr><td>Bayview Speech &amp; OT</td><td class="num">2</td><td class="num">14</td><td class="num">33</td><td>Today</td></tr>
+                    <tr><td>Northgate Children's Center</td><td class="num">2</td><td class="num">12</td><td class="num">29</td><td>Today</td></tr>
+                    <tr><td>Maple Grove Therapy</td><td class="num">2</td><td class="num">11</td><td class="num">27</td><td>Yesterday</td></tr>
+                    <tr><td>Harbor Kids Clinic</td><td class="num">1</td><td class="num">5</td><td class="num">12</td><td>3 days ago</td></tr>
+                    <tr><td>Cedar Lane Pediatrics</td><td class="num">1</td><td class="num">3</td><td class="num">6</td><td>4 days ago</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <footer>
+    Mockup for review only. Screens and figures are illustrative; nothing here is
+    connected to a real device or database. If the hosted service holds any
+    information that identifies a child, health-privacy rules apply &mdash; the
+    working plan is to store an anonymous code per patient and keep the
+    name-to-code list with the clinic. See <code>docs/cloud-architecture.md</code>.
+  </footer>
+</div>
