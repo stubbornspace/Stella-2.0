@@ -117,6 +117,11 @@ export interface MetricDefinition {
   format?: MetricFormat
 }
 
+export interface SessionFilterDefinition {
+  key: string
+  label: string
+}
+
 export interface ExerciseDefinition {
   id: ExerciseType
   label: string
@@ -125,6 +130,7 @@ export interface ExerciseDefinition {
   summaryCards: MetricDefinition[]
   charts: MetricDefinition[]
   tableColumns: MetricDefinition[]
+  configurationFilters: SessionFilterDefinition[]
 }
 
 export interface DashboardStats {

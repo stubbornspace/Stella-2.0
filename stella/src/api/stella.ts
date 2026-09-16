@@ -17,7 +17,6 @@ const demoToday = new Date("2026-09-15T12:00:00")
 export type CreatePatientInput = {
   firstName: string
   lastName: string
-  patientCode: string
   notes?: string
 }
 
@@ -46,6 +45,19 @@ function writePatients(patients: Patient[]) {
 
 function fullName(patient: Patient) {
   return `${patient.firstName} ${patient.lastName}`
+}
+
+function getNextPatientCode(patients: Patient[]) {
+  const maxPatientNumber = patients.reduce((currentMax, patient) => {
+    const match = /^P-(\d+)$/i.exec(patient.patientCode.trim())
+    if (!match) {
+      return currentMax
+    }
+
+    return Math.max(currentMax, Number(match[1]))
+  }, 1020)
+
+  return `P-${String(maxPatientNumber + 1).padStart(4, "0")}`
 }
 
 function getSessionValue(session: ExerciseSession, key: string) {
@@ -151,7 +163,7 @@ export async function getPatient(patientId: string): Promise<Patient | undefined
 export async function createPatient(input: CreatePatientInput): Promise<Patient> {
   await delay()
   const patients = readPatients()
-  const normalizedCode = input.patientCode.trim().toUpperCase()
+  const normalizedCode = getNextPatientCode(patients)
   const id = normalizedCode.toLowerCase()
 
   const patient: Patient = {

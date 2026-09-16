@@ -18,7 +18,7 @@ import {
   Search,
   UserRound,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Link,
   Navigate,
@@ -61,12 +61,12 @@ import type {
   ExerciseType,
   MetricDefinition,
   PatientWithStats,
+  SessionFilterDefinition,
 } from "@/types"
 
 const patientSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),
-  patientCode: z.string().trim().min(1, "Patient ID is required"),
   notes: z.string().optional(),
 })
 
@@ -83,10 +83,109 @@ function displayText(value: unknown) {
     return String(value ?? "N/A")
   }
 
+  if (/^\d+(-\d+|\+)$/.test(value)) {
+    return value
+  }
+
   return value
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
+}
+
+type SessionFilterOption = {
+  value: string
+  label: string
+}
+
+type SessionFilterGroup = SessionFilterDefinition & {
+  options: SessionFilterOption[]
+}
+
+type SessionFilterState = Record<string, string[]>
+type SessionSortDirection = "asc" | "desc"
+type SessionSortState = {
+  key: string
+  direction: SessionSortDirection
+}
+
+const DEFAULT_SESSION_SORT: SessionSortState = {
+  key: "sessionDate",
+  direction: "desc",
+}
+
+function getFilterValue(session: ExerciseSession, key: string) {
+  const value = getSessionDisplayValue(session, key)
+
+  if (value === undefined || value === null || value === "") {
+    return undefined
+  }
+
+  return String(value)
+}
+
+function formatFilterOptionLabel(value: string) {
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    return value
+  }
+
+  return displayText(value)
+}
+
+function compareFilterValues(left: string, right: string) {
+  const leftNumber = Number(left)
+  const rightNumber = Number(right)
+
+  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
+    return leftNumber - rightNumber
+  }
+
+  const leftRange = /^(\d+)/.exec(left)
+  const rightRange = /^(\d+)/.exec(right)
+
+  if (leftRange && rightRange) {
+    return Number(leftRange[1]) - Number(rightRange[1])
+  }
+
+  return formatFilterOptionLabel(left).localeCompare(formatFilterOptionLabel(right))
+}
+
+function getComparableSessionValue(session: ExerciseSession, key: string) {
+  if (key === "sessionDate") {
+    return new Date(session.sessionDate).getTime()
+  }
+
+  const value = getSessionDisplayValue(session, key)
+
+  if (typeof value === "number") {
+    return value
+  }
+
+  if (typeof value !== "string") {
+    return String(value ?? "")
+  }
+
+  if (/^\d+\/\d+$/.test(value)) {
+    const [completed, total] = value.split("/").map(Number)
+    return total === 0 ? 0 : completed / total
+  }
+
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    return Number(value)
+  }
+
+  return displayText(value).toLowerCase()
+}
+
+function compareSessionValues(left: ExerciseSession, right: ExerciseSession, key: string) {
+  const leftValue = getComparableSessionValue(left, key)
+  const rightValue = getComparableSessionValue(right, key)
+
+  if (typeof leftValue === "number" && typeof rightValue === "number") {
+    return leftValue - rightValue
+  }
+
+  return String(leftValue).localeCompare(String(rightValue))
 }
 
 function StatusBadge({
@@ -294,7 +393,6 @@ function AddPatientDialog({
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    patientCode: "",
     notes: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -322,7 +420,7 @@ function AddPatientDialog({
     }
 
     const patient = await createPatient.mutateAsync(parsed.data)
-    setForm({ firstName: "", lastName: "", patientCode: "", notes: "" })
+    setForm({ firstName: "", lastName: "", notes: "" })
     setErrors({})
     onCreated(`${patient.firstName} ${patient.lastName} was added.`)
     onOpenChange(false)
@@ -337,7 +435,7 @@ function AddPatientDialog({
         <div>
           <h2 className="text-xl font-semibold">Add Patient</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a local POC patient record.
+            Create a local POC patient record. Patient ID will be assigned automatically.
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -363,18 +461,6 @@ function AddPatientDialog({
             />
             {errors.lastName ? (
               <span className="text-xs text-destructive">{errors.lastName}</span>
-            ) : null}
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Patient ID
-            <input
-              aria-invalid={Boolean(errors.patientCode)}
-              className="h-9 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              onChange={(event) => updateField("patientCode", event.target.value)}
-              value={form.patientCode}
-            />
-            {errors.patientCode ? (
-              <span className="text-xs text-destructive">{errors.patientCode}</span>
             ) : null}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -507,10 +593,6 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
                 value={globalFilter}
               />
             </div>
-            <Button onClick={() => setDialogOpen(true)} type="button" variant="outline">
-              <Plus data-icon="inline-start" />
-              Add Patient
-            </Button>
           </div>
         </div>
         <DataTable
@@ -656,15 +738,6 @@ function PatientSummaryPage() {
         <MetricCard label="Last Session" value={formatDate(lastSession?.sessionDate)} />
       </div>
 
-      {patient && sessions.length > 0 ? (
-        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          {patient.firstName} has completed {sessions.length} Stella sessions across{" "}
-          {summaries.length} exercise types since {formatDate(firstSession?.sessionDate)}. The
-          most recent session was {exerciseDefinitions[lastSession.activity].label} on{" "}
-          {formatDate(lastSession.sessionDate)}.
-        </div>
-      ) : null}
-
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Exercises</h2>
         <DataTable
@@ -735,6 +808,109 @@ function ChartPanel({ metric, data }: { metric: MetricDefinition; data: ChartDat
             />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+function SessionTableSortHeader({
+  label,
+  sortKey,
+  sortState,
+  onToggleSort,
+}: {
+  label: string
+  sortKey: string
+  sortState: SessionSortState
+  onToggleSort: (key: string) => void
+}) {
+  const isActive = sortState.key === sortKey
+
+  return (
+    <button
+      className="inline-flex items-center gap-1 text-xs font-medium tracking-wide uppercase"
+      onClick={() => onToggleSort(sortKey)}
+      type="button"
+    >
+      {label}
+      <span className={cn("text-muted-foreground", isActive ? "text-foreground" : "")}>
+        {isActive ? (sortState.direction === "asc" ? "↑" : "↓") : "↕"}
+      </span>
+    </button>
+  )
+}
+
+function ConfigurationFilters({
+  filters,
+  activeFilters,
+  filteredCount,
+  totalCount,
+  onClearFilters,
+  onToggleFilter,
+}: {
+  filters: SessionFilterGroup[]
+  activeFilters: SessionFilterState
+  filteredCount: number
+  totalCount: number
+  onClearFilters: () => void
+  onToggleFilter: (filterKey: string, value: string) => void
+}) {
+  if (filters.length === 0) {
+    return null
+  }
+
+  const hasActiveFilters = filters.some((filter) => (activeFilters[filter.key] ?? []).length > 0)
+
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium">Filters</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasActiveFilters
+              ? `Showing ${filteredCount} of ${totalCount} sessions. Filters also update the charts.`
+              : `Showing all ${totalCount} sessions. Filters also update the charts.`}
+          </p>
+        </div>
+        <Button
+          disabled={!hasActiveFilters}
+          onClick={onClearFilters}
+          type="button"
+          variant="outline"
+        >
+          Clear Filters
+        </Button>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {filters.map((filter) => (
+          <div className="rounded-lg border bg-background p-3" key={filter.key}>
+            <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {filter.label}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {filter.options.map((option) => {
+                const isSelected = (activeFilters[filter.key] ?? []).includes(option.value)
+
+                return (
+                  <Button
+                    className={cn(
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+                        : ""
+                    )}
+                    key={option.value}
+                    onClick={() => onToggleFilter(filter.key, option.value)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {option.label}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -825,18 +1001,138 @@ function ExerciseDetailsPage() {
   const patientQuery = usePatient(patientId)
   const sessionsQuery = useExerciseSessions(patientId, typedExercise)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<SessionFilterState>({})
+  const [sortState, setSortState] = useState<SessionSortState>(DEFAULT_SESSION_SORT)
   const sessions = sessionsQuery.data ?? []
+  const patient = patientQuery.data
+  const definition = typedExercise ? exerciseDefinitions[typedExercise] : null
+  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient"
 
-  if (!typedExercise || (!patientQuery.isLoading && !patientQuery.data)) {
+  useEffect(() => {
+    setExpandedSession(null)
+    setActiveFilters({})
+    setSortState(DEFAULT_SESSION_SORT)
+  }, [typedExercise])
+
+  const filters = useMemo<SessionFilterGroup[]>(
+    () => {
+      if (!definition) {
+        return []
+      }
+
+      return definition.configurationFilters
+        .map((filter) => {
+          const values = Array.from(
+            new Set(
+              sessions
+                .map((session) => getFilterValue(session, filter.key))
+                .filter((value): value is string => Boolean(value))
+            )
+          ).sort(compareFilterValues)
+
+          return {
+            ...filter,
+            options: values.map((value) => ({
+              value,
+              label: formatFilterOptionLabel(value),
+            })),
+          }
+        })
+        .filter((filter) => filter.options.length > 1)
+    },
+    [definition, sessions]
+  )
+
+  const filteredSessions = useMemo(
+    () =>
+      sessions.filter((session) =>
+        filters.every((filter) => {
+          const selectedValues = activeFilters[filter.key] ?? []
+
+          if (selectedValues.length === 0) {
+            return true
+          }
+
+          const value = getFilterValue(session, filter.key)
+          return value ? selectedValues.includes(value) : false
+        })
+      ),
+    [activeFilters, filters, sessions]
+  )
+
+  const sortedSessions = useMemo(() => {
+    const nextSessions = [...filteredSessions]
+    nextSessions.sort((left, right) => {
+      const comparison = compareSessionValues(left, right, sortState.key)
+      return sortState.direction === "asc" ? comparison : -comparison
+    })
+    return nextSessions
+  }, [filteredSessions, sortState])
+
+  const hasActiveFilters = filters.some((filter) => (activeFilters[filter.key] ?? []).length > 0)
+  const chartData = buildChartData(filteredSessions, definition?.charts ?? [])
+  const firstSession = filteredSessions[0]
+  const lastSession = filteredSessions[filteredSessions.length - 1]
+  const expandedSessionRecord =
+    expandedSession === null
+      ? null
+      : filteredSessions.find((session) => session.sessionId === expandedSession) ?? null
+
+  const emptyFilterMessage = hasActiveFilters
+    ? "No sessions match the selected configuration filters."
+    : "No sessions recorded for this exercise yet."
+
+  const pageDescription =
+    sessionsQuery.isLoading
+      ? `${patientName} • Loading sessions...`
+      : filteredSessions.length > 0
+      ? `${patientName} • ${filteredSessions.length}${hasActiveFilters ? ` of ${sessions.length}` : ""} sessions • ${formatDate(firstSession?.sessionDate, "MMM d")} – ${formatDate(lastSession?.sessionDate, "MMM d, yyyy")}`
+      : `${patientName} • ${emptyFilterMessage}`
+
+  if (!typedExercise || !definition || (!patientQuery.isLoading && !patientQuery.data)) {
     return <Navigate replace to="/" />
   }
 
-  const patient = patientQuery.data
-  const definition = exerciseDefinitions[typedExercise]
-  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient"
-  const chartData = buildChartData(sessions, definition.charts)
-  const firstSession = sessions[0]
-  const lastSession = sessions[sessions.length - 1]
+  function toggleFilter(filterKey: string, value: string) {
+    setExpandedSession(null)
+    setActiveFilters((current) => {
+      const selectedValues = current[filterKey] ?? []
+      const nextValues = selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value]
+
+      if (nextValues.length === 0) {
+        const nextFilters = { ...current }
+        delete nextFilters[filterKey]
+        return nextFilters
+      }
+
+      return {
+        ...current,
+        [filterKey]: nextValues,
+      }
+    })
+  }
+
+  function clearFilters() {
+    setExpandedSession(null)
+    setActiveFilters({})
+  }
+
+  function toggleSort(key: string) {
+    setExpandedSession(null)
+    setSortState((current) =>
+      current.key === key
+        ? {
+            key,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          }
+        : {
+            key,
+            direction: key === "sessionDate" ? "desc" : "asc",
+          }
+    )
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
@@ -862,10 +1158,7 @@ function ExerciseDetailsPage() {
             Back to patient
           </Button>
         </div>
-        <PageHeader
-          description={`${patientName} • ${sessions.length} sessions • ${formatDate(firstSession?.sessionDate, "MMM d")} – ${formatDate(lastSession?.sessionDate, "MMM d, yyyy")}`}
-          title={definition.label}
-        />
+        <PageHeader description={pageDescription} title={definition.label} />
         <p className="max-w-2xl text-sm text-muted-foreground">{definition.description}</p>
       </div>
 
@@ -875,7 +1168,7 @@ function ExerciseDetailsPage() {
             key={metric.key}
             label={metric.label}
             value={formatMetricValue(
-              getExerciseAggregateValue(sessions, metric.key),
+              getExerciseAggregateValue(filteredSessions, metric.key),
               metric.format
             )}
           />
@@ -886,97 +1179,135 @@ function ExerciseDetailsPage() {
         <div>
           <h2 className="text-xl font-semibold">Performance Over Time</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Session-level measured performance over time.
+            Session-level measured performance for the selected configurations.
           </p>
         </div>
-        <div className="grid gap-4 xl:grid-cols-2">
-          {definition.charts.slice(0, 2).map((metric) => (
-            <ChartPanel data={chartData} key={metric.key} metric={metric} />
-          ))}
-        </div>
+        {filteredSessions.length > 0 ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {definition.charts.slice(0, 2).map((metric) => (
+              <ChartPanel data={chartData} key={metric.key} metric={metric} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed bg-card px-4 py-8 text-sm text-muted-foreground">
+            {sessionsQuery.isLoading ? "Loading sessions..." : emptyFilterMessage}
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">Sessions</h2>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">Sessions</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sort the session table and filter specific configurations. Filters apply to the
+              charts and table together.
+            </p>
+          </div>
+          <ConfigurationFilters
+            activeFilters={activeFilters}
+            filteredCount={filteredSessions.length}
+            filters={filters}
+            onClearFilters={clearFilters}
+            onToggleFilter={toggleFilter}
+            totalCount={sessions.length}
+          />
+        </div>
         <div className="overflow-hidden rounded-lg border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] border-collapse text-sm">
+            <table className="w-full min-w-[1320px] border-collapse text-sm">
               <thead className="bg-muted/60">
                 <tr>
                   <th className="h-11 px-4 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    Date
+                    <SessionTableSortHeader
+                      label="Date"
+                      onToggleSort={toggleSort}
+                      sortKey="sessionDate"
+                      sortState={sortState}
+                    />
                   </th>
                   {definition.tableColumns.map((column) => (
                     <th
                       className="h-11 px-4 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                       key={column.key}
                     >
-                      {column.label}
+                      <SessionTableSortHeader
+                        label={column.label}
+                        onToggleSort={toggleSort}
+                        sortKey={column.key}
+                        sortState={sortState}
+                      />
                     </th>
                   ))}
                   <th className="h-11 px-4 text-left" />
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((session) => {
-                  const isExpanded = expandedSession === session.sessionId
+                {sortedSessions.length > 0 ? (
+                  sortedSessions.map((session) => {
+                    const isExpanded = expandedSession === session.sessionId
 
-                  return (
-                    <tr className="border-t" key={session.sessionId}>
-                      <td className="h-[52px] px-4 align-middle font-medium">
-                        {formatDate(session.sessionDate, "MMM d")}
-                      </td>
-                      {definition.tableColumns.map((column) => {
-                        const value = getSessionDisplayValue(session, column.key)
-                        const statusValue =
-                          column.key === "status"
-                            ? displayText(value) === "Completed"
-                              ? "Completed"
-                              : "Ended Early"
-                            : null
+                    return (
+                      <tr className="border-t" key={session.sessionId}>
+                        <td className="h-[52px] px-4 align-middle font-medium">
+                          {formatDate(session.sessionDate, "MMM d")}
+                        </td>
+                        {definition.tableColumns.map((column) => {
+                          const value = getSessionDisplayValue(session, column.key)
+                          const statusValue =
+                            column.key === "status"
+                              ? displayText(value) === "Completed"
+                                ? "Completed"
+                                : "Ended Early"
+                              : null
 
-                        return (
-                          <td className="h-[52px] px-4 align-middle" key={column.key}>
-                            {statusValue ? (
-                              <StatusBadge status={statusValue} />
-                            ) : (
-                              <span className="tabular-nums">
-                                {formatMetricValue(
-                                  column.format === "text" ? displayText(value) : value,
-                                  column.format
-                                )}
-                              </span>
-                            )}
-                          </td>
-                        )
-                      })}
-                      <td className="h-[52px] px-4 align-middle">
-                        <Button
-                          aria-expanded={isExpanded}
-                          onClick={() =>
-                            setExpandedSession(isExpanded ? null : session.sessionId)
-                          }
-                          size="icon-sm"
-                          type="button"
-                          variant="ghost"
-                        >
-                          {isExpanded ? <ChevronDown /> : <ChevronRight />}
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                          return (
+                            <td className="h-[52px] px-4 align-middle" key={column.key}>
+                              {statusValue ? (
+                                <StatusBadge status={statusValue} />
+                              ) : (
+                                <span className="tabular-nums">
+                                  {formatMetricValue(
+                                    column.format === "text" ? displayText(value) : value,
+                                    column.format
+                                  )}
+                                </span>
+                              )}
+                            </td>
+                          )
+                        })}
+                        <td className="h-[52px] px-4 align-middle">
+                          <Button
+                            aria-expanded={isExpanded}
+                            onClick={() =>
+                              setExpandedSession(isExpanded ? null : session.sessionId)
+                            }
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            {isExpanded ? <ChevronDown /> : <ChevronRight />}
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                ) : (
+                  <tr className="border-t">
+                    <td
+                      className="h-24 px-4 text-center text-sm text-muted-foreground"
+                      colSpan={definition.tableColumns.length + 2}
+                    >
+                      {sessionsQuery.isLoading ? "Loading sessions..." : emptyFilterMessage}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-          {expandedSession ? (
+          {expandedSessionRecord ? (
             <div className="border-t p-4">
-              <SessionDetails
-                session={
-                  sessions.find((session) => session.sessionId === expandedSession) ??
-                  sessions[0]
-                }
-              />
+              <SessionDetails session={expandedSessionRecord} />
             </div>
           ) : null}
         </div>

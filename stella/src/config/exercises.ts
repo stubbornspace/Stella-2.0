@@ -52,6 +52,10 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     tableColumns: [
       { key: "status", label: "Status", format: "text" },
       { key: "contentMode", label: "Mode", format: "text" },
+      { key: "wordLength", label: "Word Length", format: "text" },
+      { key: "audioMode", label: "Audio", format: "text" },
+      { key: "tempoBpm", label: "Tempo", format: "count" },
+      { key: "itemsPerSession", label: "Items", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
       {
@@ -65,6 +69,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "milliseconds",
       },
       { key: "incorrectAttempts", label: "Errors", format: "count" },
+    ],
+    configurationFilters: [
+      { key: "contentMode", label: "Mode" },
+      { key: "audioMode", label: "Audio" },
+      { key: "wordLength", label: "Word Length" },
     ],
   },
   "letter-find": {
@@ -117,7 +126,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     ],
     tableColumns: [
       { key: "status", label: "Status", format: "text" },
-      { key: "contentMode", label: "Content Mode", format: "text" },
+      { key: "contentMode", label: "Mode", format: "text" },
+      { key: "audioMode", label: "Audio", format: "text" },
+      { key: "tempoBpm", label: "Tempo", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
       {
@@ -131,6 +142,10 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "milliseconds",
       },
       { key: "incorrectAttempts", label: "Incorrect Attempts", format: "count" },
+    ],
+    configurationFilters: [
+      { key: "contentMode", label: "Mode" },
+      { key: "audioMode", label: "Audio" },
     ],
   },
   "eye-pong": {
@@ -186,6 +201,10 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "duration",
       },
     ],
+    configurationFilters: [
+      { key: "pattern", label: "Pattern" },
+      { key: "audioMode", label: "Audio" },
+    ],
   },
   "inhibition-challenge": {
     id: "inhibition-challenge",
@@ -230,8 +249,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     ],
     tableColumns: [
       { key: "status", label: "Status", format: "text" },
-      { key: "trials", label: "Trials", format: "count" },
       { key: "rulePreset", label: "Rule Preset", format: "text" },
+      { key: "trials", label: "Trials", format: "count" },
+      { key: "responseWindowMs", label: "Response Window", format: "milliseconds" },
       { key: "goAccuracyPercent", label: "Go Accuracy", format: "percent" },
       {
         key: "noGoAccuracyPercent",
@@ -249,6 +269,7 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "milliseconds",
       },
     ],
+    configurationFilters: [{ key: "rulePreset", label: "Rule Preset" }],
   },
   "motor-sequence-builder": {
     id: "motor-sequence-builder",
@@ -322,6 +343,10 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Mean Completion Time",
         format: "milliseconds",
       },
+    ],
+    configurationFilters: [
+      { key: "contentType", label: "Content Type" },
+      { key: "sequenceLength", label: "Sequence Length" },
     ],
   },
 }

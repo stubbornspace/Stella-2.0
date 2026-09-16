@@ -136,17 +136,14 @@ type MetricPoint = {
   time: number
 }
 
+const progressTrendPatientIds = new Set(["p-1021"])
+
 const patientPlans = [
   {
     patientId: "p-1021",
     startOffset: 95,
-    activities: [
-      "letter-target",
-      "letter-find",
-      "inhibition-challenge",
-      "motor-sequence-builder",
-    ] satisfies ExerciseType[],
-    counts: [9, 7, 7, 5],
+    activities: exerciseTypes,
+    counts: [9, 7, 4, 7, 5],
   },
   {
     patientId: "p-1022",
@@ -266,9 +263,35 @@ function round(value: number, precision = 0) {
   return Math.round(value * factor) / factor
 }
 
-function metricPoint(seed: number, sessionIndex: number): MetricPoint {
-  const wave = [0, 6, 2, 8, 5, 11, 7, 13, 9, 15][sessionIndex % 10]
+function metricPoint(
+  seed: number,
+  sessionIndex: number,
+  patientId: string,
+  sessionCount: number
+): MetricPoint {
   const base = seed % 9
+
+  if (progressTrendPatientIds.has(patientId)) {
+    const progress = sessionCount <= 1 ? 1 : sessionIndex / (sessionCount - 1)
+    const wiggle = [-1, 0, 1, 0, 1, 0][sessionIndex % 6]
+
+    return {
+      accuracy: clamp(74 + base + progress * 14 + wiggle, 68, 96),
+      firstAttempt: clamp(66 + base + progress * 18 + wiggle, 62, 94),
+      latency: clamp(1140 - base * 8 - progress * 260 + wiggle * 8, 720, 1180),
+      errors: clamp(Math.round(4 - progress * 4 + (wiggle > 0 ? 0 : 1)), 0, 5),
+      completion: clamp(80 + base + progress * 15 + wiggle, 70, 100),
+      changes: Math.round(34 + base + progress * 18 + wiggle * 2),
+      go: clamp(81 + base + progress * 14 + wiggle, 72, 98),
+      noGo: clamp(77 + base + progress * 16 + wiggle, 68, 96),
+      missedGo: clamp(Math.round(12 - progress * 8 + (wiggle > 0 ? 0 : 1)), 2, 15),
+      sequence: clamp(74 + base + progress * 16 + wiggle, 65, 96),
+      sequenceFirst: clamp(68 + base + progress * 18 + wiggle, 60, 93),
+      time: clamp(6200 - base * 70 - progress * 1700 + wiggle * 70, 3200, 7000),
+    }
+  }
+
+  const wave = [0, 6, 2, 8, 5, 11, 7, 13, 9, 15][sessionIndex % 10]
 
   return {
     accuracy: clamp(74 + base + wave, 68, 96),
@@ -329,11 +352,12 @@ type BaseSessionWithActivity<TActivity extends ExerciseType> = {
 function makeLetterTarget(
   patientId: string,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
 ): LetterTargetSession {
-  const point = metricPoint(seed, sessionIndex)
+  const point = metricPoint(seed, sessionIndex, patientId, sessionCount)
   const contentMode = sessionIndex % 3 === 0 ? "letters" : "words"
   const itemsTotal = contentMode === "letters" ? 15 : 10
   const itemsCompleted = point.accuracy > 82 ? itemsTotal : itemsTotal - 1
@@ -364,11 +388,12 @@ function makeLetterTarget(
 function makeLetterFind(
   patientId: string,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
 ): LetterFindSession {
-  const point = metricPoint(seed + 2, sessionIndex)
+  const point = metricPoint(seed + 2, sessionIndex, patientId, sessionCount)
   const contentMode = sessionIndex % 2 === 0 ? "letters" : "words"
   const itemsTotal = contentMode === "letters" ? 12 : 9
   const itemsCompleted = point.accuracy > 80 ? itemsTotal : itemsTotal - 1
@@ -393,11 +418,12 @@ function makeLetterFind(
 function makeEyePong(
   patientId: string,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
 ): EyePongSession {
-  const point = metricPoint(seed + 4, sessionIndex)
+  const point = metricPoint(seed + 4, sessionIndex, patientId, sessionCount)
   const audioMode = sessionIndex % 3 === 0 ? "silent" : sessionIndex % 2 === 0 ? "music" : "metronome"
   const patterns: EyePongSession["pattern"][] = ["horizontal", "vertical", "diagonal", "mixed"]
 
@@ -414,11 +440,12 @@ function makeEyePong(
 function makeInhibitionChallenge(
   patientId: string,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
 ): InhibitionChallengeSession {
-  const point = metricPoint(seed + 5, sessionIndex)
+  const point = metricPoint(seed + 5, sessionIndex, patientId, sessionCount)
   const presets: InhibitionChallengeSession["rulePreset"][] = ["color", "letter", "mixed"]
 
   return {
@@ -436,11 +463,12 @@ function makeInhibitionChallenge(
 function makeMotorSequenceBuilder(
   patientId: string,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
 ): MotorSequenceBuilderSession {
-  const point = metricPoint(seed + 7, sessionIndex)
+  const point = metricPoint(seed + 7, sessionIndex, patientId, sessionCount)
   const types: MotorSequenceBuilderSession["contentType"][] = ["letters", "words", "mixed"]
   const sequenceLength = 3 + (sessionIndex % 4)
 
@@ -459,6 +487,7 @@ function makeSession(
   patientId: string,
   activity: ExerciseType,
   sessionIndex: number,
+  sessionCount: number,
   activityIndex: number,
   startOffset: number
 ): ExerciseSession {
@@ -466,22 +495,66 @@ function makeSession(
 
   switch (activity) {
     case "letter-target":
-      return makeLetterTarget(patientId, sessionIndex, activityIndex, startOffset, seed)
+      return makeLetterTarget(
+        patientId,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        startOffset,
+        seed
+      )
     case "letter-find":
-      return makeLetterFind(patientId, sessionIndex, activityIndex, startOffset, seed)
+      return makeLetterFind(
+        patientId,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        startOffset,
+        seed
+      )
     case "eye-pong":
-      return makeEyePong(patientId, sessionIndex, activityIndex, startOffset, seed)
+      return makeEyePong(
+        patientId,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        startOffset,
+        seed
+      )
     case "inhibition-challenge":
-      return makeInhibitionChallenge(patientId, sessionIndex, activityIndex, startOffset, seed)
+      return makeInhibitionChallenge(
+        patientId,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        startOffset,
+        seed
+      )
     case "motor-sequence-builder":
-      return makeMotorSequenceBuilder(patientId, sessionIndex, activityIndex, startOffset, seed)
+      return makeMotorSequenceBuilder(
+        patientId,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        startOffset,
+        seed
+      )
   }
 }
 
 export const seedSessions: ExerciseSession[] = patientPlans.flatMap((plan) =>
   plan.activities.flatMap((activity, activityIndex) =>
-    Array.from({ length: plan.counts[activityIndex] ?? 0 }, (_, sessionIndex) =>
-      makeSession(plan.patientId, activity, sessionIndex, activityIndex, plan.startOffset)
-    )
+    Array.from({ length: plan.counts[activityIndex] ?? 0 }, (_, sessionIndex) => {
+      const sessionCount = plan.counts[activityIndex] ?? 0
+
+      return makeSession(
+        plan.patientId,
+        activity,
+        sessionIndex,
+        sessionCount,
+        activityIndex,
+        plan.startOffset
+      )
+    })
   )
 )
