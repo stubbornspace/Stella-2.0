@@ -36,6 +36,8 @@ type SessionRunState = {
   savedSession?: ExerciseSession
 }
 
+const SIMULATED_RUN_DURATION_SECONDS = 10
+
 const inputClassName =
   "h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
 
@@ -596,10 +598,12 @@ function RunningSession({
   onStop: () => void
 }) {
   const definition = exerciseDefinitions[run.setup.activity]
-  const progress =
-    run.totalUnits === 0
-      ? 0
-      : Math.round((run.completedUnits / run.totalUnits) * 100)
+  const progress = Math.min(
+    100,
+    Math.round(
+      (run.elapsedSeconds / SIMULATED_RUN_DURATION_SECONDS) * 100
+    )
+  )
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -803,19 +807,25 @@ export function ExerciseControlPanel({
           return current
         }
 
-        const increment = Math.max(1, Math.ceil(current.totalUnits / 10))
-        const completedUnits = Math.min(
-          current.totalUnits,
-          current.completedUnits + increment
+        const elapsedSeconds = Math.min(
+          SIMULATED_RUN_DURATION_SECONDS,
+          current.elapsedSeconds + 1
         )
+        const isComplete =
+          elapsedSeconds >= SIMULATED_RUN_DURATION_SECONDS
+        const completedUnits = isComplete
+          ? current.totalUnits
+          : Math.floor(
+              (current.totalUnits * elapsedSeconds) /
+                SIMULATED_RUN_DURATION_SECONDS
+            )
 
         return {
           ...current,
           completedUnits,
-          elapsedSeconds: current.elapsedSeconds + 1,
-          phase: completedUnits >= current.totalUnits ? "saving" : "running",
-          outcome:
-            completedUnits >= current.totalUnits ? "completed" : undefined,
+          elapsedSeconds,
+          phase: isComplete ? "saving" : "running",
+          outcome: isComplete ? "completed" : undefined,
         }
       })
     }, 1000)
