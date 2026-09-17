@@ -1609,26 +1609,26 @@ function HeaderBreadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="min-w-0 flex-1 overflow-x-auto border-l pl-4 text-sm whitespace-nowrap text-muted-foreground"
+      className="min-w-0 flex-1 overflow-x-auto border-l border-[#2a4568] pl-4 text-base whitespace-nowrap text-[#c6a632]"
     >
       <div className="flex items-center gap-2">
-        <Link className="hover:text-foreground" to="/">
+        <Link className="hover:text-[#f6f2ea]" to="/">
           Patients
         </Link>
         <span>/</span>
         {exerciseDefinition ? (
           <>
             <Link
-              className="hover:text-foreground"
+              className="hover:text-[#f6f2ea]"
               to={`/patients/${patientId}`}
             >
               {patientName}
             </Link>
             <span>/</span>
-            <span className="text-foreground">{exerciseDefinition.label}</span>
+            <span>{exerciseDefinition.label}</span>
           </>
         ) : (
-          <span className="text-foreground">{patientName}</span>
+          <span>{patientName}</span>
         )}
       </div>
     </nav>
@@ -1644,17 +1644,17 @@ function AppShell({
 }) {
   return (
     <div className="min-h-svh bg-background text-foreground">
-      <header className="border-b bg-card">
+      <header className="border-b border-[#2a4568] bg-[#0b1b2f] text-[#c6a632]">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-8">
           <Link className="flex min-w-0" to="/">
-            <span className="text-base font-semibold">Stella</span>
+            <span className="font-heading text-xl font-bold">Stella</span>
           </Link>
           <HeaderBreadcrumbs />
-          <div className="ml-auto flex items-center gap-3 text-sm">
+          <div className="ml-auto flex items-center gap-3 text-base">
             <div className="hidden text-right sm:block">
-              <div className="font-medium">Clinician User</div>
+              <div className="font-normal">Clinician User</div>
             </div>
-            <div className="flex size-9 items-center justify-center rounded-full border bg-muted">
+            <div className="flex size-9 items-center justify-center rounded-full border border-[#2a4568] bg-[#14304f]">
               <UserRound />
             </div>
           </div>
