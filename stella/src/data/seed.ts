@@ -148,13 +148,20 @@ const patientPlans = [
   {
     patientId: "p-1022",
     startOffset: 74,
-    activities: ["letter-target", "letter-find", "eye-pong"] satisfies ExerciseType[],
+    activities: [
+      "letter-target",
+      "letter-find",
+      "eye-pong",
+    ] satisfies ExerciseType[],
     counts: [7, 6, 4],
   },
   {
     patientId: "p-1023",
     startOffset: 88,
-    activities: ["letter-find", "motor-sequence-builder"] satisfies ExerciseType[],
+    activities: [
+      "letter-find",
+      "motor-sequence-builder",
+    ] satisfies ExerciseType[],
     counts: [6, 5],
   },
   {
@@ -176,7 +183,11 @@ const patientPlans = [
   {
     patientId: "p-1026",
     startOffset: 55,
-    activities: ["letter-target", "letter-find", "eye-pong"] satisfies ExerciseType[],
+    activities: [
+      "letter-target",
+      "letter-find",
+      "eye-pong",
+    ] satisfies ExerciseType[],
     counts: [5, 4, 3],
   },
   {
@@ -192,7 +203,11 @@ const patientPlans = [
   {
     patientId: "p-1028",
     startOffset: 45,
-    activities: ["letter-find", "eye-pong", "motor-sequence-builder"] satisfies ExerciseType[],
+    activities: [
+      "letter-find",
+      "eye-pong",
+      "motor-sequence-builder",
+    ] satisfies ExerciseType[],
     counts: [5, 4, 3],
   },
   {
@@ -220,7 +235,10 @@ const patientPlans = [
   {
     patientId: "p-1032",
     startOffset: 30,
-    activities: ["letter-find", "inhibition-challenge"] satisfies ExerciseType[],
+    activities: [
+      "letter-find",
+      "inhibition-challenge",
+    ] satisfies ExerciseType[],
     counts: [5, 4],
   },
   {
@@ -243,14 +261,24 @@ const patientPlans = [
   {
     patientId: "p-1035",
     startOffset: 18,
-    activities: ["letter-find", "eye-pong", "motor-sequence-builder"] satisfies ExerciseType[],
+    activities: [
+      "letter-find",
+      "eye-pong",
+      "motor-sequence-builder",
+    ] satisfies ExerciseType[],
     counts: [5, 4, 4],
   },
 ]
 
-function dateFor(startOffset: number, sessionIndex: number, activityIndex: number) {
+function dateFor(
+  startOffset: number,
+  sessionIndex: number,
+  activityIndex: number
+) {
   const date = new Date(demoToday)
-  date.setDate(demoToday.getDate() - startOffset + sessionIndex * 7 + activityIndex * 2)
+  date.setDate(
+    demoToday.getDate() - startOffset + sessionIndex * 7 + activityIndex * 2
+  )
   return date.toISOString()
 }
 
@@ -284,7 +312,11 @@ function metricPoint(
       changes: Math.round(34 + base + progress * 18 + wiggle * 2),
       go: clamp(81 + base + progress * 14 + wiggle, 72, 98),
       noGo: clamp(77 + base + progress * 16 + wiggle, 68, 96),
-      missedGo: clamp(Math.round(12 - progress * 8 + (wiggle > 0 ? 0 : 1)), 2, 15),
+      missedGo: clamp(
+        Math.round(12 - progress * 8 + (wiggle > 0 ? 0 : 1)),
+        2,
+        15
+      ),
       sequence: clamp(74 + base + progress * 16 + wiggle, 65, 96),
       sequenceFirst: clamp(68 + base + progress * 18 + wiggle, 60, 93),
       time: clamp(6200 - base * 70 - progress * 1700 + wiggle * 70, 3200, 7000),
@@ -295,9 +327,21 @@ function metricPoint(
 
   return {
     accuracy: clamp(74 + base + wave, 68, 96),
-    firstAttempt: clamp(68 + base + wave + (sessionIndex % 2 === 0 ? 2 : -1), 62, 94),
-    latency: clamp(1110 - wave * 18 - base * 9 + (sessionIndex % 3) * 34, 720, 1180),
-    errors: clamp(4 - Math.floor(wave / 5) + (sessionIndex % 3 === 0 ? 1 : 0), 0, 5),
+    firstAttempt: clamp(
+      68 + base + wave + (sessionIndex % 2 === 0 ? 2 : -1),
+      62,
+      94
+    ),
+    latency: clamp(
+      1110 - wave * 18 - base * 9 + (sessionIndex % 3) * 34,
+      720,
+      1180
+    ),
+    errors: clamp(
+      4 - Math.floor(wave / 5) + (sessionIndex % 3 === 0 ? 1 : 0),
+      0,
+      5
+    ),
     completion: clamp(78 + base + wave, 70, 100),
     changes: 34 + base + sessionIndex * 2 + (sessionIndex % 3) * 3,
     go: clamp(80 + base + wave, 72, 98),
@@ -305,11 +349,18 @@ function metricPoint(
     missedGo: clamp(12 - Math.floor(wave / 3) + (sessionIndex % 2), 2, 15),
     sequence: clamp(72 + base + wave, 65, 96),
     sequenceFirst: clamp(66 + base + wave, 60, 93),
-    time: clamp(6200 - wave * 120 - base * 80 + (sessionIndex % 4) * 180, 3200, 7000),
+    time: clamp(
+      6200 - wave * 120 - base * 80 + (sessionIndex % 4) * 180,
+      3200,
+      7000
+    ),
   }
 }
 
-function sessionStatus(sessionIndex: number, patientId: string): "completed" | "ended-early" {
+function sessionStatus(
+  sessionIndex: number,
+  patientId: string
+): "completed" | "ended-early" {
   return sessionIndex > 1 && (sessionIndex + patientId.length) % 11 === 0
     ? "ended-early"
     : "completed"
@@ -328,9 +379,16 @@ function baseSession<TActivity extends ExerciseType>(
     activity,
     sessionDate: dateFor(startOffset, sessionIndex, activityIndex),
     status: sessionStatus(sessionIndex, patientId),
-    summary: "Session-level Stella reporting values captured from keyboard exercise activity.",
-    activeEngagementTimeMinutes: round(12 + sessionIndex * 0.8 + activityIndex * 0.6, 1),
-    totalSessionDurationMinutes: round(15 + sessionIndex * 0.9 + activityIndex * 0.8, 1),
+    summary:
+      "Session-level Stella reporting values captured from keyboard exercise activity.",
+    activeEngagementTimeMinutes: round(
+      12 + sessionIndex * 0.8 + activityIndex * 0.6,
+      1
+    ),
+    totalSessionDurationMinutes: round(
+      15 + sessionIndex * 0.9 + activityIndex * 0.8,
+      1
+    ),
     attemptsPerMinute: round(7 + sessionIndex * 0.3 + activityIndex * 0.2, 1),
     pauseBreakCount: sessionIndex % 4 === 0 ? 1 : 0,
   }
@@ -359,17 +417,37 @@ function makeLetterTarget(
 ): LetterTargetSession {
   const point = metricPoint(seed, sessionIndex, patientId, sessionCount)
   const contentMode = sessionIndex % 3 === 0 ? "letters" : "words"
-  const itemsTotal = contentMode === "letters" ? 15 : 10
+  const itemsTotal =
+    contentMode === "letters" ? 3 + (sessionIndex % 5) : 2 + (sessionIndex % 4)
   const itemsCompleted = point.accuracy > 82 ? itemsTotal : itemsTotal - 1
-  const audioMode = sessionIndex % 4 === 0 ? "silent" : sessionIndex % 2 === 0 ? "music" : "metronome"
+  const audioMode =
+    sessionIndex % 4 === 0
+      ? "silent"
+      : sessionIndex % 2 === 0
+        ? "music"
+        : "metronome"
 
   return {
-    ...baseSession(patientId, "letter-target", sessionIndex, activityIndex, startOffset),
+    ...baseSession(
+      patientId,
+      "letter-target",
+      sessionIndex,
+      activityIndex,
+      startOffset
+    ),
     contentMode,
     itemsPerSession: itemsTotal,
-    wordLength: contentMode === "words" ? (sessionIndex % 2 === 0 ? "5-10" : "0-5") : undefined,
+    wordLength:
+      contentMode === "words"
+        ? sessionIndex % 2 === 0
+          ? "5-10"
+          : "0-5"
+        : undefined,
     audioMode,
-    tempoBpm: audioMode === "silent" ? undefined : 68 + (sessionIndex % 5) * 4,
+    tempoBpm:
+      audioMode === "metronome" ? 50 + (sessionIndex % 5) * 8 : undefined,
+    musicPlaybackRate:
+      audioMode === "music" ? [0.8, 1, 1.2, 1.4][sessionIndex % 4] : undefined,
     itemsCompleted,
     itemsTotal,
     totalAttempts: itemsCompleted + point.errors,
@@ -379,9 +457,12 @@ function makeLetterTarget(
     meanCorrectLatencyMs: point.latency,
     incorrectAttempts: point.errors,
     latencyVariabilityStdDev: 95 + sessionIndex * 8,
-    onBeatAccuracyPercent: audioMode === "silent" ? undefined : clamp(point.accuracy - 6, 60, 92),
-    timingVariabilityStdDev: audioMode === "silent" ? undefined : 118 + sessionIndex * 6,
-    directionalConsistencyPercent: sessionIndex % 2 === 0 ? clamp(point.accuracy + 2, 70, 98) : undefined,
+    onBeatAccuracyPercent:
+      audioMode === "silent" ? undefined : clamp(point.accuracy - 6, 60, 92),
+    timingVariabilityStdDev:
+      audioMode === "silent" ? undefined : 118 + sessionIndex * 6,
+    directionalConsistencyPercent:
+      sessionIndex % 2 === 0 ? clamp(point.accuracy + 2, 70, 98) : undefined,
   }
 }
 
@@ -395,13 +476,34 @@ function makeLetterFind(
 ): LetterFindSession {
   const point = metricPoint(seed + 2, sessionIndex, patientId, sessionCount)
   const contentMode = sessionIndex % 2 === 0 ? "letters" : "words"
-  const itemsTotal = contentMode === "letters" ? 12 : 9
+  const itemsTotal =
+    contentMode === "letters" ? 4 + (sessionIndex % 5) : 2 + (sessionIndex % 4)
   const itemsCompleted = point.accuracy > 80 ? itemsTotal : itemsTotal - 1
-  const audioMode = sessionIndex % 3 === 0 ? "spoken-cue" : sessionIndex % 2 === 0 ? "music" : "metronome"
+  const audioMode =
+    sessionIndex % 3 === 0
+      ? "silent"
+      : sessionIndex % 2 === 0
+        ? "music"
+        : "metronome"
 
   return {
-    ...baseSession(patientId, "letter-find", sessionIndex, activityIndex, startOffset),
+    ...baseSession(
+      patientId,
+      "letter-find",
+      sessionIndex,
+      activityIndex,
+      startOffset
+    ),
     contentMode,
+    itemsPerSession: itemsTotal,
+    wordLength:
+      contentMode === "words"
+        ? sessionIndex % 3 === 0
+          ? "10+"
+          : sessionIndex % 2 === 0
+            ? "5-10"
+            : "0-5"
+        : undefined,
     itemsCompleted,
     itemsTotal,
     totalAttempts: itemsCompleted + point.errors,
@@ -411,7 +513,12 @@ function makeLetterFind(
     meanCorrectLatencyMs: point.latency + 110,
     incorrectAttempts: point.errors,
     audioMode,
-    tempoBpm: audioMode === "spoken-cue" ? undefined : 64 + (sessionIndex % 4) * 6,
+    tempoBpm:
+      audioMode === "metronome" ? 46 + (sessionIndex % 5) * 10 : undefined,
+    musicPlaybackRate:
+      audioMode === "music"
+        ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4]
+        : undefined,
   }
 }
 
@@ -424,16 +531,36 @@ function makeEyePong(
   seed: number
 ): EyePongSession {
   const point = metricPoint(seed + 4, sessionIndex, patientId, sessionCount)
-  const audioMode = sessionIndex % 3 === 0 ? "silent" : sessionIndex % 2 === 0 ? "music" : "metronome"
-  const patterns: EyePongSession["pattern"][] = ["horizontal", "vertical", "diagonal", "mixed"]
+  const audioMode =
+    sessionIndex % 3 === 0
+      ? "silent"
+      : sessionIndex % 2 === 0
+        ? "music"
+        : "metronome"
+  const patterns: EyePongSession["pattern"][] = [
+    "horizontal",
+    "vertical",
+    "diagonal",
+    "mixed",
+  ]
 
   return {
-    ...baseSession(patientId, "eye-pong", sessionIndex, activityIndex, startOffset),
+    ...baseSession(
+      patientId,
+      "eye-pong",
+      sessionIndex,
+      activityIndex,
+      startOffset
+    ),
+    mode: sessionIndex % 2 === 0 ? "left-right" : "random",
     pattern: patterns[sessionIndex % patterns.length],
     targetChanges: point.changes,
     completionRatePercent: point.completion,
     audioMode,
-    tempoBpm: audioMode === "silent" ? undefined : 60 + (sessionIndex % 5) * 5,
+    tempoBpm:
+      audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined,
+    musicPlaybackRate:
+      audioMode === "music" ? [0.8, 1, 1.2, 1.5][sessionIndex % 4] : undefined,
   }
 }
 
@@ -446,17 +573,28 @@ function makeInhibitionChallenge(
   seed: number
 ): InhibitionChallengeSession {
   const point = metricPoint(seed + 5, sessionIndex, patientId, sessionCount)
-  const presets: InhibitionChallengeSession["rulePreset"][] = ["color", "letter", "mixed"]
+  const presets: InhibitionChallengeSession["rulePreset"][] = [
+    "balanced",
+    "go-heavy",
+    "stop-heavy",
+  ]
 
   return {
-    ...baseSession(patientId, "inhibition-challenge", sessionIndex, activityIndex, startOffset),
-    trials: 36 + (sessionIndex % 4) * 6,
+    ...baseSession(
+      patientId,
+      "inhibition-challenge",
+      sessionIndex,
+      activityIndex,
+      startOffset
+    ),
+    trialCount: 12 + (sessionIndex % 3) * 4,
     rulePreset: presets[sessionIndex % presets.length],
     goAccuracyPercent: point.go,
     noGoAccuracyPercent: point.noGo,
     missedGoRatePercent: point.missedGo,
     meanGoLatencyMs: point.latency - 120,
-    responseWindowMs: 1200,
+    responseWindowMs: 900 + (sessionIndex % 4) * 100,
+    cueSpeedBpm: 60 + (sessionIndex % 5) * 6,
   }
 }
 
@@ -469,13 +607,30 @@ function makeMotorSequenceBuilder(
   seed: number
 ): MotorSequenceBuilderSession {
   const point = metricPoint(seed + 7, sessionIndex, patientId, sessionCount)
-  const types: MotorSequenceBuilderSession["contentType"][] = ["letters", "words", "mixed"]
-  const sequenceLength = 3 + (sessionIndex % 4)
+  const types: MotorSequenceBuilderSession["contentType"][] = [
+    "letter-sequence",
+    "word-sequence",
+  ]
+  const sequenceLength = 2 + (sessionIndex % 4)
+  const audioModes: MotorSequenceBuilderSession["audioMode"][] = [
+    "silent",
+    "metronome",
+    "music",
+  ]
 
   return {
-    ...baseSession(patientId, "motor-sequence-builder", sessionIndex, activityIndex, startOffset),
+    ...baseSession(
+      patientId,
+      "motor-sequence-builder",
+      sessionIndex,
+      activityIndex,
+      startOffset
+    ),
     contentType: types[sessionIndex % types.length],
     sequenceLength,
+    sequenceCount: 4 + (sessionIndex % 3),
+    presentationSpeedBpm: 60 + (sessionIndex % 5) * 6,
+    audioMode: audioModes[sessionIndex % audioModes.length],
     sequenceCompletionRatePercent: point.sequence,
     firstAttemptSequenceAccuracyPercent: point.sequenceFirst,
     longestCompletedSequence: Math.min(sequenceLength, 2 + (sessionIndex % 5)),
@@ -544,17 +699,20 @@ function makeSession(
 
 export const seedSessions: ExerciseSession[] = patientPlans.flatMap((plan) =>
   plan.activities.flatMap((activity, activityIndex) =>
-    Array.from({ length: plan.counts[activityIndex] ?? 0 }, (_, sessionIndex) => {
-      const sessionCount = plan.counts[activityIndex] ?? 0
+    Array.from(
+      { length: plan.counts[activityIndex] ?? 0 },
+      (_, sessionIndex) => {
+        const sessionCount = plan.counts[activityIndex] ?? 0
 
-      return makeSession(
-        plan.patientId,
-        activity,
-        sessionIndex,
-        sessionCount,
-        activityIndex,
-        plan.startOffset
-      )
-    })
+        return makeSession(
+          plan.patientId,
+          activity,
+          sessionIndex,
+          sessionCount,
+          activityIndex,
+          plan.startOffset
+        )
+      }
+    )
   )
 )

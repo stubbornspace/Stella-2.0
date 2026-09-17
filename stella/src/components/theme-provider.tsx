@@ -59,11 +59,11 @@ export function ThemeProvider({
   })
 
   const setTheme = React.useCallback(
-    (_nextTheme: Theme) => {
-      localStorage.setItem(storageKey, defaultTheme)
-      setThemeState(defaultTheme)
+    (nextTheme: Theme) => {
+      localStorage.setItem(storageKey, nextTheme)
+      setThemeState(nextTheme)
     },
-    [defaultTheme, storageKey]
+    [storageKey]
   )
 
   const applyTheme = React.useCallback(
@@ -86,11 +86,6 @@ export function ThemeProvider({
   React.useEffect(() => {
     applyTheme(theme)
   }, [theme, applyTheme])
-
-  React.useEffect(() => {
-    localStorage.setItem(storageKey, defaultTheme)
-    setThemeState(defaultTheme)
-  }, [defaultTheme, storageKey])
 
   React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {

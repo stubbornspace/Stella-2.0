@@ -8,6 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
+import { Popover } from "@base-ui/react/popover"
 import { format, parseISO } from "date-fns"
 import {
   ArrowLeft,
@@ -18,14 +19,17 @@ import {
   Search,
   UserRound,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import {
   Link,
+  matchPath,
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom"
 import {
   CartesianGrid,
@@ -44,6 +48,11 @@ import {
   getExerciseAggregateValue,
   getSessionDisplayValue,
 } from "@/api/stella"
+import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
+import {
+  PatientTabs,
+  type PatientDetailTab,
+} from "@/components/patients/patient-tabs"
 import { Button } from "@/components/ui/button"
 import { exerciseDefinitions, exerciseTypes } from "@/config/exercises"
 import {
@@ -125,6 +134,14 @@ function getFilterValue(session: ExerciseSession, key: string) {
 }
 
 function formatFilterOptionLabel(value: string) {
+  if (value === "silent") {
+    return "None"
+  }
+
+  if (value === "left-right") {
+    return "Left / Right"
+  }
+
   if (/^\d+(\.\d+)?$/.test(value)) {
     return value
   }
@@ -147,7 +164,9 @@ function compareFilterValues(left: string, right: string) {
     return Number(leftRange[1]) - Number(rightRange[1])
   }
 
-  return formatFilterOptionLabel(left).localeCompare(formatFilterOptionLabel(right))
+  return formatFilterOptionLabel(left).localeCompare(
+    formatFilterOptionLabel(right)
+  )
 }
 
 function getComparableSessionValue(session: ExerciseSession, key: string) {
@@ -177,7 +196,11 @@ function getComparableSessionValue(session: ExerciseSession, key: string) {
   return displayText(value).toLowerCase()
 }
 
-function compareSessionValues(left: ExerciseSession, right: ExerciseSession, key: string) {
+function compareSessionValues(
+  left: ExerciseSession,
+  right: ExerciseSession,
+  key: string
+) {
   const leftValue = getComparableSessionValue(left, key)
   const rightValue = getComparableSessionValue(right, key)
 
@@ -222,7 +245,9 @@ function MetricCard({
         {label}
       </div>
       <div className="mt-3 text-3xl font-semibold tabular-nums">{value}</div>
-      {helper ? <div className="mt-1 text-sm text-muted-foreground">{helper}</div> : null}
+      {helper ? (
+        <div className="mt-1 text-sm text-muted-foreground">{helper}</div>
+      ) : null}
     </div>
   )
 }
@@ -241,7 +266,9 @@ function PageHeader({
       <div className="min-w-0">
         <h1 className="text-3xl font-semibold tracking-normal">{title}</h1>
         {description ? (
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {description}
+          </p>
         ) : null}
       </div>
       {action}
@@ -272,7 +299,10 @@ function DataTable<TData>({
                   >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </th>
                 ))}
               </tr>
@@ -291,7 +321,10 @@ function DataTable<TData>({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="h-[52px] px-4 align-middle">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -343,7 +376,8 @@ function TablePagination<TData>({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 py-4">
       <div className="text-sm text-muted-foreground">
-        Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+        Page {table.getState().pagination.pageIndex + 1} of{" "}
+        {table.getPageCount() || 1}
       </div>
       <div className="flex items-center gap-2">
         <select
@@ -413,7 +447,10 @@ function AddPatientDialog({
     if (!parsed.success) {
       setErrors(
         Object.fromEntries(
-          parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message])
+          parsed.error.issues.map((issue) => [
+            String(issue.path[0]),
+            issue.message,
+          ])
         )
       )
       return
@@ -435,7 +472,8 @@ function AddPatientDialog({
         <div>
           <h2 className="text-xl font-semibold">Add Patient</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a local POC patient record. Patient ID will be assigned automatically.
+            Create a local POC patient record. Patient ID will be assigned
+            automatically.
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -448,7 +486,9 @@ function AddPatientDialog({
               value={form.firstName}
             />
             {errors.firstName ? (
-              <span className="text-xs text-destructive">{errors.firstName}</span>
+              <span className="text-xs text-destructive">
+                {errors.firstName}
+              </span>
             ) : null}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -460,7 +500,9 @@ function AddPatientDialog({
               value={form.lastName}
             />
             {errors.lastName ? (
-              <span className="text-xs text-destructive">{errors.lastName}</span>
+              <span className="text-xs text-destructive">
+                {errors.lastName}
+              </span>
             ) : null}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -473,7 +515,11 @@ function AddPatientDialog({
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
+          <Button
+            onClick={() => onOpenChange(false)}
+            type="button"
+            variant="outline"
+          >
             Cancel
           </Button>
           <Button disabled={createPatient.isPending} type="submit">
@@ -502,14 +548,18 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
           <div>
             <div className="font-medium">{row.original.fullName}</div>
             {row.original.notes ? (
-              <div className="text-xs text-muted-foreground">{row.original.notes}</div>
+              <div className="text-xs text-muted-foreground">
+                {row.original.notes}
+              </div>
             ) : null}
           </div>
         ),
       },
       {
         accessorKey: "patientCode",
-        header: ({ column }) => <SortHeader column={column} label="Patient ID" />,
+        header: ({ column }) => (
+          <SortHeader column={column} label="Patient ID" />
+        ),
       },
       {
         accessorKey: "totalSessions",
@@ -520,19 +570,23 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
       },
       {
         accessorKey: "exerciseCount",
-        header: ({ column }) => <SortHeader column={column} label="Exercises" />,
+        header: ({ column }) => (
+          <SortHeader column={column} label="Exercises" />
+        ),
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue<number>()}</span>
         ),
       },
       {
         accessorKey: "lastSessionDate",
-        header: ({ column }) => <SortHeader column={column} label="Last Session" />,
+        header: ({ column }) => (
+          <SortHeader column={column} label="Last Session" />
+        ),
         cell: ({ getValue }) => formatDate(getValue<string | undefined>()),
       },
       {
         accessorKey: "isActive",
-        header: "Status",
+        header: ({ column }) => <SortHeader column={column} label="Status" />,
         cell: ({ getValue }) => (
           <StatusBadge status={getValue<boolean>() ? "Active" : "Inactive"} />
         ),
@@ -574,10 +628,22 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total Patients" value={statsQuery.data?.totalPatients ?? "—"} />
-        <MetricCard label="Total Sessions" value={statsQuery.data?.totalSessions ?? "—"} />
-        <MetricCard label="This Month" value={statsQuery.data?.sessionsThisMonth ?? "—"} />
-        <MetricCard label="Active Patients" value={statsQuery.data?.activePatients ?? "—"} />
+        <MetricCard
+          label="Total Patients"
+          value={statsQuery.data?.totalPatients ?? "—"}
+        />
+        <MetricCard
+          label="Total Sessions"
+          value={statsQuery.data?.totalSessions ?? "—"}
+        />
+        <MetricCard
+          label="This Month"
+          value={statsQuery.data?.sessionsThisMonth ?? "—"}
+        />
+        <MetricCard
+          label="Active Patients"
+          value={statsQuery.data?.activePatients ?? "—"}
+        />
       </div>
 
       <section className="flex flex-col gap-4">
@@ -596,7 +662,11 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
           </div>
         </div>
         <DataTable
-          emptyMessage={patientsQuery.isLoading ? "Loading patients..." : "No patients found."}
+          emptyMessage={
+            patientsQuery.isLoading
+              ? "Loading patients..."
+              : "No patients found."
+          }
           onRowClick={(patient) => navigate(`/patients/${patient.id}`)}
           table={table}
         />
@@ -612,16 +682,22 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
   )
 }
 
-function PatientSummaryPage() {
+function PatientSummaryPage({
+  onToast,
+}: {
+  onToast: (message: string) => void
+}) {
   const navigate = useNavigate()
   const { patientId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const patientQuery = usePatient(patientId)
   const sessionsQuery = usePatientSessions(patientId)
   const [sorting, setSorting] = useState<SortingState>([])
   const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data])
   const summaries = useMemo(() => buildExerciseSummaries(sessions), [sessions])
   const firstSession = sessions.toSorted(
-    (a, b) => new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime()
+    (a, b) =>
+      new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime()
   )[0]
   const lastSession = sessions[0]
 
@@ -635,7 +711,9 @@ function PatientSummaryPage() {
           return (
             <div>
               <div className="font-medium">{definition.label}</div>
-              <div className="text-xs text-muted-foreground">{definition.description}</div>
+              <div className="text-xs text-muted-foreground">
+                {definition.description}
+              </div>
             </div>
           )
         },
@@ -649,7 +727,9 @@ function PatientSummaryPage() {
       },
       {
         accessorKey: "lastSessionDate",
-        header: ({ column }) => <SortHeader column={column} label="Last Session" />,
+        header: ({ column }) => (
+          <SortHeader column={column} label="Last Session" />
+        ),
         cell: ({ getValue }) => formatDate(getValue<string>(), "MMM d"),
       },
       {
@@ -706,48 +786,84 @@ function PatientSummaryPage() {
   }
 
   const patient = patientQuery.data
-  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient"
+  const patientName = patient
+    ? `${patient.firstName} ${patient.lastName}`
+    : "Patient"
+  const activeTab: PatientDetailTab =
+    searchParams.get("tab") === "exercise-control"
+      ? "exercise-control"
+      : "dashboard"
+
+  function changeTab(tab: PatientDetailTab) {
+    const nextSearchParams = new URLSearchParams(searchParams)
+
+    if (tab === "dashboard") {
+      nextSearchParams.delete("tab")
+    } else {
+      nextSearchParams.set("tab", tab)
+    }
+
+    setSearchParams(nextSearchParams)
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
-      <div className="flex flex-col gap-4">
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link className="hover:text-foreground" to="/">
-            Patients
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">{patientName}</span>
-        </nav>
-        <PageHeader
-          description={
-            patient
-              ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)}`
-              : "Loading patient activity."
-          }
-          title={patientName}
-        />
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+        <h1 className="text-3xl font-semibold tracking-normal">
+          {patientName}
+        </h1>
+        <div className="text-sm text-muted-foreground">
+          {patient
+            ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)}`
+            : "Loading patient activity."}
+        </div>
         {patient ? (
-          <div className="text-sm text-muted-foreground">Patient ID {patient.patientCode}</div>
+          <div className="text-sm text-muted-foreground">
+            Patient ID {patient.patientCode}
+          </div>
         ) : null}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total Sessions" value={sessions.length} />
-        <MetricCard label="Exercises" value={summaries.length} />
-        <MetricCard label="First Session" value={formatDate(firstSession?.sessionDate)} />
-        <MetricCard label="Last Session" value={formatDate(lastSession?.sessionDate)} />
-      </div>
+      <PatientTabs activeTab={activeTab} onTabChange={changeTab} />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">Exercises</h2>
-        <DataTable
-          emptyMessage={sessionsQuery.isLoading ? "Loading exercises..." : "No exercises found."}
-          onRowClick={(summary) =>
-            navigate(`/patients/${patientId}/exercises/${summary.activity}`)
-          }
-          table={table}
+      {activeTab === "dashboard" ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard label="Total Sessions" value={sessions.length} />
+            <MetricCard label="Exercises" value={summaries.length} />
+            <MetricCard
+              label="First Session"
+              value={formatDate(firstSession?.sessionDate)}
+            />
+            <MetricCard
+              label="Last Session"
+              value={formatDate(lastSession?.sessionDate)}
+            />
+          </div>
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Exercises</h2>
+            <DataTable
+              emptyMessage={
+                sessionsQuery.isLoading
+                  ? "Loading exercises..."
+                  : "No exercises found."
+              }
+              onRowClick={(summary) =>
+                navigate(`/patients/${patientId}/exercises/${summary.activity}`)
+              }
+              table={table}
+            />
+          </section>
+        </>
+      ) : patientId ? (
+        <ExerciseControlPanel
+          onToast={onToast}
+          onViewDashboard={() => changeTab("dashboard")}
+          patientId={patientId}
+          patientName={patientName}
         />
-      </section>
+      ) : null}
     </main>
   )
 }
@@ -757,7 +873,10 @@ type ChartDatum = {
   displayDate: string
 } & Record<string, string | number>
 
-function buildChartData(sessions: ExerciseSession[], metrics: MetricDefinition[]) {
+function buildChartData(
+  sessions: ExerciseSession[],
+  metrics: MetricDefinition[]
+) {
   return sessions.map((session) => {
     const datum: ChartDatum = {
       date: session.sessionDate,
@@ -775,7 +894,13 @@ function buildChartData(sessions: ExerciseSession[], metrics: MetricDefinition[]
   })
 }
 
-function ChartPanel({ metric, data }: { metric: MetricDefinition; data: ChartDatum[] }) {
+function ChartPanel({
+  metric,
+  data,
+}: {
+  metric: MetricDefinition
+  data: ChartDatum[]
+}) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <div>
@@ -786,12 +911,18 @@ function ChartPanel({ metric, data }: { metric: MetricDefinition; data: ChartDat
       </div>
       <div className="mt-4 h-72">
         <ResponsiveContainer height="100%" width="100%">
-          <LineChart data={data} margin={{ left: 0, right: 18, top: 8, bottom: 8 }}>
+          <LineChart
+            data={data}
+            margin={{ left: 0, right: 18, top: 8, bottom: 8 }}
+          >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="displayDate" tickLine={false} />
             <YAxis tickLine={false} width={42} />
             <Tooltip
-              formatter={(value) => [formatMetricValue(value, metric.format), metric.label]}
+              formatter={(value) => [
+                formatMetricValue(value, metric.format),
+                metric.label,
+              ]}
               labelFormatter={(_, payload) =>
                 payload[0]?.payload?.date
                   ? formatDate(payload[0].payload.date, "MMM d, yyyy")
@@ -833,7 +964,12 @@ function SessionTableSortHeader({
       type="button"
     >
       {label}
-      <span className={cn("text-muted-foreground", isActive ? "text-foreground" : "")}>
+      <span
+        className={cn(
+          "text-muted-foreground",
+          isActive ? "text-foreground" : ""
+        )}
+      >
         {isActive ? (sortState.direction === "asc" ? "↑" : "↓") : "↕"}
       </span>
     </button>
@@ -859,58 +995,87 @@ function ConfigurationFilters({
     return null
   }
 
-  const hasActiveFilters = filters.some((filter) => (activeFilters[filter.key] ?? []).length > 0)
+  const hasActiveFilters = filters.some(
+    (filter) => (activeFilters[filter.key] ?? []).length > 0
+  )
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="overflow-x-auto rounded-lg border bg-muted/30">
+      <div className="flex min-w-max items-end gap-3 p-4">
+        <div className="mr-2 min-w-52 self-center">
           <div className="text-sm font-medium">Filters</div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {hasActiveFilters
-              ? `Showing ${filteredCount} of ${totalCount} sessions. Filters also update the charts.`
-              : `Showing all ${totalCount} sessions. Filters also update the charts.`}
+              ? `Showing ${filteredCount} of ${totalCount} sessions`
+              : `Showing all ${totalCount} sessions`}
           </p>
         </div>
+        {filters.map((filter) => {
+          const selectedValues = activeFilters[filter.key] ?? []
+          const selectionLabel =
+            selectedValues.length === 0
+              ? "All"
+              : selectedValues.length === 1
+                ? (filter.options.find(
+                    (option) => option.value === selectedValues[0]
+                  )?.label ?? "1 selected")
+                : `${selectedValues.length} selected`
+
+          return (
+            <div className="flex min-w-40 flex-col gap-1.5" key={filter.key}>
+              <span className="text-xs font-medium text-muted-foreground">
+                {filter.label}
+              </span>
+              <Popover.Root>
+                <Popover.Trigger className="flex h-9 min-w-40 items-center justify-between gap-3 rounded-md border bg-background px-3 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50">
+                  <span className="max-w-36 truncate">{selectionLabel}</span>
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Positioner
+                    align="start"
+                    className="z-50"
+                    sideOffset={6}
+                  >
+                    <Popover.Popup className="min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                        {filter.label}
+                      </div>
+                      {filter.options.map((option) => {
+                        const isSelected = selectedValues.includes(option.value)
+
+                        return (
+                          <label
+                            className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-muted"
+                            key={option.value}
+                          >
+                            <input
+                              checked={isSelected}
+                              className="size-4 accent-primary"
+                              onChange={() =>
+                                onToggleFilter(filter.key, option.value)
+                              }
+                              type="checkbox"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        )
+                      })}
+                    </Popover.Popup>
+                  </Popover.Positioner>
+                </Popover.Portal>
+              </Popover.Root>
+            </div>
+          )
+        })}
         <Button
           disabled={!hasActiveFilters}
           onClick={onClearFilters}
           type="button"
           variant="outline"
         >
-          Clear Filters
+          Clear
         </Button>
-      </div>
-      <div className="grid gap-4 xl:grid-cols-2">
-        {filters.map((filter) => (
-          <div className="rounded-lg border bg-background p-3" key={filter.key}>
-            <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              {filter.label}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {filter.options.map((option) => {
-                const isSelected = (activeFilters[filter.key] ?? []).includes(option.value)
-
-                return (
-                  <Button
-                    className={cn(
-                      isSelected
-                        ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
-                        : ""
-                    )}
-                    key={option.value}
-                    onClick={() => onToggleFilter(filter.key, option.value)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {option.label}
-                  </Button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -923,70 +1088,168 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   if ("contentMode" in session) {
     configRows.push(["Content", displayText(session.contentMode)])
   }
+  if ("itemsPerSession" in session && session.itemsPerSession) {
+    configRows.push(["Items", session.itemsPerSession])
+  }
   if ("wordLength" in session && session.wordLength) {
     configRows.push(["Word Length", session.wordLength])
   }
   if ("audioMode" in session) {
-    configRows.push(["Audio", displayText(session.audioMode)])
+    configRows.push([
+      "Beat",
+      session.audioMode === "silent" ? "None" : displayText(session.audioMode),
+    ])
   }
   if ("tempoBpm" in session && session.tempoBpm) {
     configRows.push(["Tempo", `${session.tempoBpm} BPM`])
   }
+  if (session.musicPlaybackRate) {
+    configRows.push(["Music Speed", `${session.musicPlaybackRate.toFixed(1)}x`])
+  }
+  if ("timeoutSeconds" in session && session.timeoutSeconds) {
+    configRows.push(["Response Timeout", `${session.timeoutSeconds} seconds`])
+  }
+  if ("mode" in session && session.mode) {
+    configRows.push(["Target Order", displayText(session.mode)])
+  }
   if ("pattern" in session) {
     configRows.push(["Pattern", displayText(session.pattern)])
   }
+  if ("intervalMs" in session && session.intervalMs) {
+    configRows.push(["Target Interval", `${session.intervalMs} ms`])
+  }
   if ("rulePreset" in session) {
-    configRows.push(["Rule Preset", displayText(session.rulePreset)])
+    configRows.push(["Trial Count", session.trialCount])
+    configRows.push(["Trial Mix", displayText(session.rulePreset)])
     configRows.push(["Response Window", `${session.responseWindowMs} ms`])
+    configRows.push(["Cue Speed", `${session.cueSpeedBpm} BPM`])
   }
   if ("contentType" in session) {
     configRows.push(["Content Type", displayText(session.contentType)])
     configRows.push(["Sequence Length", session.sequenceLength])
+    configRows.push(["Sequence Count", session.sequenceCount])
+    configRows.push([
+      "Presentation Speed",
+      `${session.presentationSpeedBpm} BPM`,
+    ])
   }
 
   if ("totalAttempts" in session) {
     resultRows.push(["Total Attempts", session.totalAttempts])
     resultRows.push(["Correct Hits", session.correctHits])
   }
+  if ("goAccuracyPercent" in session) {
+    resultRows.push(["Go Accuracy", session.goAccuracyPercent, "percent"])
+    resultRows.push(["No-Go Accuracy", session.noGoAccuracyPercent, "percent"])
+    resultRows.push(["Missed Go Rate", session.missedGoRatePercent, "percent"])
+    resultRows.push([
+      "Mean Go Latency",
+      session.meanGoLatencyMs,
+      "milliseconds",
+    ])
+  }
+  if ("sequenceCompletionRatePercent" in session) {
+    resultRows.push([
+      "Sequence Completion",
+      session.sequenceCompletionRatePercent,
+      "percent",
+    ])
+    resultRows.push([
+      "First-Attempt Accuracy",
+      session.firstAttemptSequenceAccuracyPercent,
+      "percent",
+    ])
+    resultRows.push([
+      "Longest Completed Sequence",
+      session.longestCompletedSequence,
+      "count",
+    ])
+    resultRows.push([
+      "Mean Completion Time",
+      session.meanCompletionTimeMs,
+      "milliseconds",
+    ])
+  }
   if ("onBeatAccuracyPercent" in session && session.onBeatAccuracyPercent) {
-    resultRows.push(["On-Beat Accuracy", session.onBeatAccuracyPercent, "percent"])
+    resultRows.push([
+      "On-Beat Accuracy",
+      session.onBeatAccuracyPercent,
+      "percent",
+    ])
   }
   if ("timingVariabilityStdDev" in session && session.timingVariabilityStdDev) {
-    resultRows.push(["Timing Variability", session.timingVariabilityStdDev, "milliseconds"])
+    resultRows.push([
+      "Timing Variability",
+      session.timingVariabilityStdDev,
+      "milliseconds",
+    ])
   }
-  if ("directionalConsistencyPercent" in session && session.directionalConsistencyPercent) {
+  if (
+    "directionalConsistencyPercent" in session &&
+    session.directionalConsistencyPercent
+  ) {
     resultRows.push([
       "Directional Consistency",
       session.directionalConsistencyPercent,
       "percent",
     ])
   }
-  resultRows.push(["Engagement Time", session.activeEngagementTimeMinutes, "duration"])
-  resultRows.push(["Session Duration", session.totalSessionDurationMinutes, "duration"])
+  resultRows.push([
+    "Engagement Time",
+    session.activeEngagementTimeMinutes,
+    "duration",
+  ])
+  resultRows.push([
+    "Session Duration",
+    session.totalSessionDurationMinutes,
+    "duration",
+  ])
 
   return (
-    <div className="grid gap-6 rounded-lg border bg-muted/30 p-4 md:grid-cols-2">
-      <div>
-        <div className="text-sm font-medium">Configuration</div>
-        <div className="mt-3 flex flex-col gap-2">
-          {configRows.map(([label, value]) => (
-            <div className="flex justify-between gap-4 text-sm" key={label}>
-              <span className="text-muted-foreground">{label}</span>
-              <span className="font-medium">{String(value)}</span>
-            </div>
-          ))}
-        </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="overflow-hidden rounded-md border bg-background">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-muted/60">
+            <tr>
+              <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
+                Configuration
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {configRows.map(([label, value]) => (
+              <tr className="border-t" key={label}>
+                <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
+                  {label}
+                </th>
+                <td className="px-3 py-2.5 font-medium">{String(value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <div>
-        <div className="text-sm font-medium">Additional Results</div>
-        <div className="mt-3 flex flex-col gap-2">
-          {resultRows.map(([label, value, valueFormat]) => (
-            <div className="flex justify-between gap-4 text-sm" key={label}>
-              <span className="text-muted-foreground">{label}</span>
-              <span className="font-medium">{formatMetricValue(value, valueFormat)}</span>
-            </div>
-          ))}
-        </div>
+      <div className="overflow-hidden rounded-md border bg-background">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-muted/60">
+            <tr>
+              <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
+                Additional Results
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {resultRows.map(([label, value, valueFormat]) => (
+              <tr className="border-t" key={label}>
+                <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
+                  {label}
+                </th>
+                <td className="px-3 py-2.5 font-medium">
+                  {formatMetricValue(value, valueFormat)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -1002,46 +1265,44 @@ function ExerciseDetailsPage() {
   const sessionsQuery = useExerciseSessions(patientId, typedExercise)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [activeFilters, setActiveFilters] = useState<SessionFilterState>({})
-  const [sortState, setSortState] = useState<SessionSortState>(DEFAULT_SESSION_SORT)
-  const sessions = sessionsQuery.data ?? []
-  const patient = patientQuery.data
+  const [sortState, setSortState] =
+    useState<SessionSortState>(DEFAULT_SESSION_SORT)
+  const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data])
   const definition = typedExercise ? exerciseDefinitions[typedExercise] : null
-  const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient"
 
   useEffect(() => {
+    // Route changes must clear exercise-specific table state before rendering the next activity.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setExpandedSession(null)
     setActiveFilters({})
     setSortState(DEFAULT_SESSION_SORT)
   }, [typedExercise])
 
-  const filters = useMemo<SessionFilterGroup[]>(
-    () => {
-      if (!definition) {
-        return []
-      }
+  const filters = useMemo<SessionFilterGroup[]>(() => {
+    if (!definition) {
+      return []
+    }
 
-      return definition.configurationFilters
-        .map((filter) => {
-          const values = Array.from(
-            new Set(
-              sessions
-                .map((session) => getFilterValue(session, filter.key))
-                .filter((value): value is string => Boolean(value))
-            )
-          ).sort(compareFilterValues)
+    return definition.configurationFilters
+      .map((filter) => {
+        const values = Array.from(
+          new Set(
+            sessions
+              .map((session) => getFilterValue(session, filter.key))
+              .filter((value): value is string => Boolean(value))
+          )
+        ).sort(compareFilterValues)
 
-          return {
-            ...filter,
-            options: values.map((value) => ({
-              value,
-              label: formatFilterOptionLabel(value),
-            })),
-          }
-        })
-        .filter((filter) => filter.options.length > 1)
-    },
-    [definition, sessions]
-  )
+        return {
+          ...filter,
+          options: values.map((value) => ({
+            value,
+            label: formatFilterOptionLabel(value),
+          })),
+        }
+      })
+      .filter((filter) => filter.options.length > 1)
+  }, [definition, sessions])
 
   const filteredSessions = useMemo(
     () =>
@@ -1069,27 +1330,20 @@ function ExerciseDetailsPage() {
     return nextSessions
   }, [filteredSessions, sortState])
 
-  const hasActiveFilters = filters.some((filter) => (activeFilters[filter.key] ?? []).length > 0)
+  const hasActiveFilters = filters.some(
+    (filter) => (activeFilters[filter.key] ?? []).length > 0
+  )
   const chartData = buildChartData(filteredSessions, definition?.charts ?? [])
-  const firstSession = filteredSessions[0]
-  const lastSession = filteredSessions[filteredSessions.length - 1]
-  const expandedSessionRecord =
-    expandedSession === null
-      ? null
-      : filteredSessions.find((session) => session.sessionId === expandedSession) ?? null
 
   const emptyFilterMessage = hasActiveFilters
     ? "No sessions match the selected configuration filters."
     : "No sessions recorded for this exercise yet."
 
-  const pageDescription =
-    sessionsQuery.isLoading
-      ? `${patientName} • Loading sessions...`
-      : filteredSessions.length > 0
-      ? `${patientName} • ${filteredSessions.length}${hasActiveFilters ? ` of ${sessions.length}` : ""} sessions • ${formatDate(firstSession?.sessionDate, "MMM d")} – ${formatDate(lastSession?.sessionDate, "MMM d, yyyy")}`
-      : `${patientName} • ${emptyFilterMessage}`
-
-  if (!typedExercise || !definition || (!patientQuery.isLoading && !patientQuery.data)) {
+  if (
+    !typedExercise ||
+    !definition ||
+    (!patientQuery.isLoading && !patientQuery.data)
+  ) {
     return <Navigate replace to="/" />
   }
 
@@ -1136,31 +1390,30 @@ function ExerciseDetailsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
-      <div className="flex flex-col gap-4">
-        <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Link className="hover:text-foreground" to="/">
-            Patients
-          </Link>
-          <span>/</span>
-          <Link className="hover:text-foreground" to={`/patients/${patientId}`}>
-            {patientName}
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">{definition.label}</span>
-        </nav>
-        <div>
-          <Button
-            onClick={() => navigate(`/patients/${patientId}`)}
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeft data-icon="inline-start" />
-            Back to patient
-          </Button>
-        </div>
-        <PageHeader description={pageDescription} title={definition.label} />
-        <p className="max-w-2xl text-sm text-muted-foreground">{definition.description}</p>
+      <div>
+        <PageHeader
+          action={
+            <Button
+              onClick={() => navigate(`/patients/${patientId}`)}
+              type="button"
+              variant="ghost"
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Back to patient
+            </Button>
+          }
+          title={definition.label}
+        />
       </div>
+
+      <ConfigurationFilters
+        activeFilters={activeFilters}
+        filteredCount={filteredSessions.length}
+        filters={filters}
+        onClearFilters={clearFilters}
+        onToggleFilter={toggleFilter}
+        totalCount={sessions.length}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {definition.summaryCards.map((metric) => (
@@ -1190,32 +1443,23 @@ function ExerciseDetailsPage() {
           </div>
         ) : (
           <div className="rounded-lg border border-dashed bg-card px-4 py-8 text-sm text-muted-foreground">
-            {sessionsQuery.isLoading ? "Loading sessions..." : emptyFilterMessage}
+            {sessionsQuery.isLoading
+              ? "Loading sessions..."
+              : emptyFilterMessage}
           </div>
         )}
       </section>
 
       <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-xl font-semibold">Sessions</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sort the session table and filter specific configurations. Filters apply to the
-              charts and table together.
-            </p>
-          </div>
-          <ConfigurationFilters
-            activeFilters={activeFilters}
-            filteredCount={filteredSessions.length}
-            filters={filters}
-            onClearFilters={clearFilters}
-            onToggleFilter={toggleFilter}
-            totalCount={sessions.length}
-          />
+        <div>
+          <h2 className="text-xl font-semibold">Sessions</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review and sort the sessions included in the report.
+          </p>
         </div>
         <div className="overflow-hidden rounded-lg border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1320px] border-collapse text-sm">
+            <table className="w-full min-w-[960px] border-collapse text-sm">
               <thead className="bg-muted/60">
                 <tr>
                   <th className="h-11 px-4 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -1239,7 +1483,9 @@ function ExerciseDetailsPage() {
                       />
                     </th>
                   ))}
-                  <th className="h-11 px-4 text-left" />
+                  <th className="h-11 px-4 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Details
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1248,48 +1494,70 @@ function ExerciseDetailsPage() {
                     const isExpanded = expandedSession === session.sessionId
 
                     return (
-                      <tr className="border-t" key={session.sessionId}>
-                        <td className="h-[52px] px-4 align-middle font-medium">
-                          {formatDate(session.sessionDate, "MMM d")}
-                        </td>
-                        {definition.tableColumns.map((column) => {
-                          const value = getSessionDisplayValue(session, column.key)
-                          const statusValue =
-                            column.key === "status"
-                              ? displayText(value) === "Completed"
-                                ? "Completed"
-                                : "Ended Early"
-                              : null
+                      <Fragment key={session.sessionId}>
+                        <tr className="border-t">
+                          <td className="h-[52px] px-4 align-middle font-medium">
+                            {formatDate(session.sessionDate, "MMM d")}
+                          </td>
+                          {definition.tableColumns.map((column) => {
+                            const value = getSessionDisplayValue(
+                              session,
+                              column.key
+                            )
+                            const statusValue =
+                              column.key === "status"
+                                ? displayText(value) === "Completed"
+                                  ? "Completed"
+                                  : "Ended Early"
+                                : null
 
-                          return (
-                            <td className="h-[52px] px-4 align-middle" key={column.key}>
-                              {statusValue ? (
-                                <StatusBadge status={statusValue} />
-                              ) : (
-                                <span className="tabular-nums">
-                                  {formatMetricValue(
-                                    column.format === "text" ? displayText(value) : value,
-                                    column.format
-                                  )}
-                                </span>
-                              )}
+                            return (
+                              <td
+                                className="h-[52px] px-4 align-middle"
+                                key={column.key}
+                              >
+                                {statusValue ? (
+                                  <StatusBadge status={statusValue} />
+                                ) : (
+                                  <span className="tabular-nums">
+                                    {formatMetricValue(
+                                      column.format === "text"
+                                        ? displayText(value)
+                                        : value,
+                                      column.format
+                                    )}
+                                  </span>
+                                )}
+                              </td>
+                            )
+                          })}
+                          <td className="h-[52px] px-4 align-middle">
+                            <Button
+                              aria-expanded={isExpanded}
+                              onClick={() =>
+                                setExpandedSession(
+                                  isExpanded ? null : session.sessionId
+                                )
+                              }
+                              size="sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              {isExpanded ? "Hide" : "View"}
+                            </Button>
+                          </td>
+                        </tr>
+                        {isExpanded ? (
+                          <tr className="border-t bg-muted/15">
+                            <td
+                              className="p-4"
+                              colSpan={definition.tableColumns.length + 2}
+                            >
+                              <SessionDetails session={session} />
                             </td>
-                          )
-                        })}
-                        <td className="h-[52px] px-4 align-middle">
-                          <Button
-                            aria-expanded={isExpanded}
-                            onClick={() =>
-                              setExpandedSession(isExpanded ? null : session.sessionId)
-                            }
-                            size="icon-sm"
-                            type="button"
-                            variant="ghost"
-                          >
-                            {isExpanded ? <ChevronDown /> : <ChevronRight />}
-                          </Button>
-                        </td>
-                      </tr>
+                          </tr>
+                        ) : null}
+                      </Fragment>
                     )
                   })
                 ) : (
@@ -1298,37 +1566,93 @@ function ExerciseDetailsPage() {
                       className="h-24 px-4 text-center text-sm text-muted-foreground"
                       colSpan={definition.tableColumns.length + 2}
                     >
-                      {sessionsQuery.isLoading ? "Loading sessions..." : emptyFilterMessage}
+                      {sessionsQuery.isLoading
+                        ? "Loading sessions..."
+                        : emptyFilterMessage}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          {expandedSessionRecord ? (
-            <div className="border-t p-4">
-              <SessionDetails session={expandedSessionRecord} />
-            </div>
-          ) : null}
         </div>
       </section>
     </main>
   )
 }
 
-function AppShell({ children, toast }: { children: React.ReactNode; toast: string }) {
+function HeaderBreadcrumbs() {
+  const location = useLocation()
+  const exerciseMatch = matchPath(
+    "/patients/:patientId/exercises/:exerciseType",
+    location.pathname
+  )
+  const patientMatch = matchPath("/patients/:patientId", location.pathname)
+  const patientId =
+    exerciseMatch?.params.patientId ?? patientMatch?.params.patientId
+  const patientQuery = usePatient(patientId)
+  const patient = patientQuery.data
+  const patientName = patient
+    ? `${patient.firstName} ${patient.lastName}`
+    : "Patient"
+  const exerciseType = exerciseMatch?.params.exerciseType as
+    ExerciseType | undefined
+  const exerciseDefinition =
+    exerciseType && exerciseTypes.includes(exerciseType)
+      ? exerciseDefinitions[exerciseType]
+      : undefined
+
+  if (!patientId) {
+    return null
+  }
+
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="min-w-0 flex-1 overflow-x-auto border-l pl-4 text-sm whitespace-nowrap text-muted-foreground"
+    >
+      <div className="flex items-center gap-2">
+        <Link className="hover:text-foreground" to="/">
+          Patients
+        </Link>
+        <span>/</span>
+        {exerciseDefinition ? (
+          <>
+            <Link
+              className="hover:text-foreground"
+              to={`/patients/${patientId}`}
+            >
+              {patientName}
+            </Link>
+            <span>/</span>
+            <span className="text-foreground">{exerciseDefinition.label}</span>
+          </>
+        ) : (
+          <span className="text-foreground">{patientName}</span>
+        )}
+      </div>
+    </nav>
+  )
+}
+
+function AppShell({
+  children,
+  toast,
+}: {
+  children: React.ReactNode
+  toast: string
+}) {
   return (
     <div className="min-h-svh bg-background text-foreground">
       <header className="border-b bg-card">
-        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-8">
-          <Link className="flex min-w-0 flex-col" to="/">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-8">
+          <Link className="flex min-w-0" to="/">
             <span className="text-base font-semibold">Stella</span>
-            <span className="text-xs text-muted-foreground">Patient Reporting</span>
           </Link>
-          <div className="flex items-center gap-3 text-sm">
+          <HeaderBreadcrumbs />
+          <div className="ml-auto flex items-center gap-3 text-sm">
             <div className="hidden text-right sm:block">
               <div className="font-medium">Clinician User</div>
-              <div className="text-xs text-muted-foreground">Reporting POC</div>
             </div>
             <div className="flex size-9 items-center justify-center rounded-full border bg-muted">
               <UserRound />
@@ -1358,7 +1682,10 @@ export function App() {
     <AppShell toast={toast}>
       <Routes>
         <Route element={<PatientListPage onToast={showToast} />} path="/" />
-        <Route element={<PatientSummaryPage />} path="/patients/:patientId" />
+        <Route
+          element={<PatientSummaryPage onToast={showToast} />}
+          path="/patients/:patientId"
+        />
         <Route
           element={<ExerciseDetailsPage />}
           path="/patients/:patientId/exercises/:exerciseType"

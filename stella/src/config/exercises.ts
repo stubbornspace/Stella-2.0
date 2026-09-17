@@ -50,11 +50,8 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     tableColumns: [
-      { key: "status", label: "Status", format: "text" },
       { key: "contentMode", label: "Mode", format: "text" },
-      { key: "wordLength", label: "Word Length", format: "text" },
       { key: "audioMode", label: "Audio", format: "text" },
-      { key: "tempoBpm", label: "Tempo", format: "count" },
       { key: "itemsPerSession", label: "Items", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
@@ -72,8 +69,8 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     ],
     configurationFilters: [
       { key: "contentMode", label: "Mode" },
-      { key: "audioMode", label: "Audio" },
       { key: "wordLength", label: "Word Length" },
+      { key: "audioMode", label: "Beat" },
     ],
   },
   "letter-find": {
@@ -125,10 +122,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     tableColumns: [
-      { key: "status", label: "Status", format: "text" },
       { key: "contentMode", label: "Mode", format: "text" },
       { key: "audioMode", label: "Audio", format: "text" },
-      { key: "tempoBpm", label: "Tempo", format: "count" },
+      { key: "itemsPerSession", label: "Items", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
       {
@@ -141,11 +137,16 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Mean Correct Latency",
         format: "milliseconds",
       },
-      { key: "incorrectAttempts", label: "Incorrect Attempts", format: "count" },
+      {
+        key: "incorrectAttempts",
+        label: "Incorrect Attempts",
+        format: "count",
+      },
     ],
     configurationFilters: [
       { key: "contentMode", label: "Mode" },
-      { key: "audioMode", label: "Audio" },
+      { key: "wordLength", label: "Word Length" },
+      { key: "audioMode", label: "Beat" },
     ],
   },
   "eye-pong": {
@@ -173,7 +174,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Average Completion Rate",
         format: "percent",
       },
-      { key: "targetChanges", label: "Average Target Changes", format: "count" },
+      {
+        key: "targetChanges",
+        label: "Average Target Changes",
+        format: "count",
+      },
       {
         key: "totalSessionDurationMinutes",
         label: "Average Session Duration",
@@ -181,11 +186,15 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     charts: [
-      { key: "completionRatePercent", label: "Completion Rate", format: "percent" },
+      {
+        key: "completionRatePercent",
+        label: "Completion Rate",
+        format: "percent",
+      },
       { key: "targetChanges", label: "Target Changes", format: "count" },
     ],
     tableColumns: [
-      { key: "status", label: "Status", format: "text" },
+      { key: "mode", label: "Order", format: "text" },
       { key: "pattern", label: "Pattern", format: "text" },
       { key: "targetChanges", label: "Target Changes", format: "count" },
       {
@@ -202,8 +211,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     configurationFilters: [
-      { key: "pattern", label: "Pattern" },
-      { key: "audioMode", label: "Audio" },
+      { key: "mode", label: "Mode" },
+      { key: "audioMode", label: "Beat" },
+      { key: "tempo", label: "Tempo" },
     ],
   },
   "inhibition-challenge": {
@@ -226,7 +236,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     ],
     summaryCards: [
       { key: "sessionCount", label: "Sessions", format: "count" },
-      { key: "goAccuracyPercent", label: "Average Go Accuracy", format: "percent" },
+      {
+        key: "goAccuracyPercent",
+        label: "Average Go Accuracy",
+        format: "percent",
+      },
       {
         key: "noGoAccuracyPercent",
         label: "Average No-Go Accuracy",
@@ -245,13 +259,21 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "No-Go Accuracy",
         format: "percent",
       },
-      { key: "meanGoLatencyMs", label: "Mean Go Latency", format: "milliseconds" },
+      {
+        key: "meanGoLatencyMs",
+        label: "Mean Go Latency",
+        format: "milliseconds",
+      },
     ],
     tableColumns: [
-      { key: "status", label: "Status", format: "text" },
-      { key: "rulePreset", label: "Rule Preset", format: "text" },
-      { key: "trials", label: "Trials", format: "count" },
-      { key: "responseWindowMs", label: "Response Window", format: "milliseconds" },
+      { key: "rulePreset", label: "Trial Mix", format: "text" },
+      { key: "trialCount", label: "Trials", format: "count" },
+      {
+        key: "responseWindowMs",
+        label: "Response Window",
+        format: "milliseconds",
+      },
+      { key: "cueSpeedBpm", label: "Cue Speed", format: "count" },
       { key: "goAccuracyPercent", label: "Go Accuracy", format: "percent" },
       {
         key: "noGoAccuracyPercent",
@@ -269,7 +291,12 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "milliseconds",
       },
     ],
-    configurationFilters: [{ key: "rulePreset", label: "Rule Preset" }],
+    configurationFilters: [
+      { key: "rulePreset", label: "Trial Mix" },
+      { key: "trialCount", label: "Trial Count" },
+      { key: "responseWindowMs", label: "Response Window (ms)" },
+      { key: "cueSpeedBpm", label: "Cue Speed (BPM)" },
+    ],
   },
   "motor-sequence-builder": {
     id: "motor-sequence-builder",
@@ -320,9 +347,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     tableColumns: [
-      { key: "status", label: "Status", format: "text" },
       { key: "contentType", label: "Content Type", format: "text" },
       { key: "sequenceLength", label: "Sequence Length", format: "count" },
+      { key: "sequenceCount", label: "Sequences", format: "count" },
       {
         key: "sequenceCompletionRatePercent",
         label: "Completion Rate",
@@ -347,6 +374,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     configurationFilters: [
       { key: "contentType", label: "Content Type" },
       { key: "sequenceLength", label: "Sequence Length" },
+      { key: "sequenceCount", label: "Sequence Count" },
+      { key: "presentationSpeedBpm", label: "Presentation Speed (BPM)" },
+      { key: "audioMode", label: "Beat" },
     ],
   },
 }

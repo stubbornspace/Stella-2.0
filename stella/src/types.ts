@@ -23,6 +23,7 @@ export interface BaseSession {
   sessionDate: string
   status: SessionStatus
   summary: string
+  musicPlaybackRate?: number
   activeEngagementTimeMinutes?: number
   totalSessionDurationMinutes?: number
   attemptsPerMinute?: number
@@ -36,6 +37,7 @@ export interface LetterTargetSession extends BaseSession {
   wordLength?: "0-5" | "5-10" | "10+"
   audioMode: "silent" | "metronome" | "music"
   tempoBpm?: number
+  timeoutSeconds?: number
   itemsCompleted: number
   itemsTotal: number
   totalAttempts: number
@@ -53,6 +55,8 @@ export interface LetterTargetSession extends BaseSession {
 export interface LetterFindSession extends BaseSession {
   activity: "letter-find"
   contentMode: "letters" | "words"
+  itemsPerSession?: number
+  wordLength?: "0-5" | "5-10" | "10+"
   itemsCompleted: number
   itemsTotal: number
   totalAttempts: number
@@ -61,34 +65,41 @@ export interface LetterFindSession extends BaseSession {
   firstAttemptSuccessRatePercent: number
   meanCorrectLatencyMs: number
   incorrectAttempts: number
-  audioMode: "spoken-cue" | "metronome" | "music"
+  audioMode: "silent" | "metronome" | "music"
   tempoBpm?: number
+  timeoutSeconds?: number
 }
 
 export interface EyePongSession extends BaseSession {
   activity: "eye-pong"
+  mode?: "left-right" | "random"
   pattern: "horizontal" | "vertical" | "diagonal" | "mixed"
   targetChanges: number
   completionRatePercent: number
   audioMode: "silent" | "metronome" | "music"
   tempoBpm?: number
+  intervalMs?: number
 }
 
 export interface InhibitionChallengeSession extends BaseSession {
   activity: "inhibition-challenge"
-  trials: number
-  rulePreset: "color" | "letter" | "mixed"
+  trialCount: number
+  rulePreset: "balanced" | "go-heavy" | "stop-heavy"
   goAccuracyPercent: number
   noGoAccuracyPercent: number
   missedGoRatePercent: number
   meanGoLatencyMs: number
   responseWindowMs: number
+  cueSpeedBpm: number
 }
 
 export interface MotorSequenceBuilderSession extends BaseSession {
   activity: "motor-sequence-builder"
-  contentType: "letters" | "words" | "mixed"
+  contentType: "letter-sequence" | "word-sequence"
   sequenceLength: number
+  sequenceCount: number
+  presentationSpeedBpm: number
+  audioMode: "silent" | "metronome" | "music"
   sequenceCompletionRatePercent: number
   firstAttemptSequenceAccuracyPercent: number
   longestCompletedSequence: number
@@ -103,12 +114,7 @@ export type ExerciseSession =
   | MotorSequenceBuilderSession
 
 export type MetricFormat =
-  | "percent"
-  | "milliseconds"
-  | "count"
-  | "duration"
-  | "decimal"
-  | "text"
+  "percent" | "milliseconds" | "count" | "duration" | "decimal" | "text"
 
 export interface MetricDefinition {
   key: string
