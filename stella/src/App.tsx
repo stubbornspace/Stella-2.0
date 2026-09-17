@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
+  LogOut,
   Plus,
   Search,
   UserRound,
@@ -48,7 +49,10 @@ import {
   getExerciseAggregateValue,
   getSessionDisplayValue,
 } from "@/api/stella"
+import { useAuth } from "@/components/auth/auth-context"
+import { LoginPage } from "@/components/auth/login-page"
 import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
+import { FeedbackWidget } from "@/components/feedback/feedback-widget"
 import {
   PatientTabs,
   type PatientDetailTab,
@@ -535,7 +539,10 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
   const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [globalFilter, setGlobalFilter] = useState("")
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "isActive", desc: true },
+    { id: "lastSessionDate", desc: true },
+  ])
   const patientsQuery = usePatients()
   const statsQuery = useDashboardStats()
 
@@ -1637,11 +1644,15 @@ function HeaderBreadcrumbs() {
 
 function AppShell({
   children,
+  onToast,
   toast,
 }: {
   children: React.ReactNode
+  onToast: (message: string) => void
   toast: string
 }) {
+  const { isAuthEnabled, mode, signOut, user } = useAuth()
+
   return (
     <div className="min-h-svh bg-background text-foreground">
       <header className="border-b border-[#2a4568] bg-[#0b1b2f] text-[#c6a632]">
@@ -1651,18 +1662,55 @@ function AppShell({
           </Link>
           <HeaderBreadcrumbs />
           <div className="ml-auto flex items-center gap-3 text-base">
-            <div className="hidden text-right sm:block">
-              <div className="font-normal">Clinician User</div>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-full border border-[#2a4568] bg-[#14304f]">
-              <UserRound />
-            </div>
+            {isAuthEnabled ? (
+              <FeedbackWidget
+                onToast={onToast}
+                triggerClassName="border-[#2a4568] bg-[#14304f] text-[#f6f2ea] hover:bg-[#1a3c61] hover:text-[#f6f2ea]"
+              />
+            ) : null}
+            <Popover.Root>
+              <Popover.Trigger className="flex h-10 items-center gap-2 rounded-full border border-[#2a4568] bg-[#14304f] px-3 text-sm text-[#f6f2ea] outline-none hover:bg-[#1a3c61] focus-visible:ring-3 focus-visible:ring-[#c6a632]/40">
+                <span className="flex size-7 items-center justify-center rounded-full border border-[#2a4568] bg-[#0b1b2f]">
+                  <UserRound className="size-4" />
+                </span>
+                <ChevronDown className="size-4 text-[#c6a632]" />
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Positioner
+                  align="end"
+                  className="z-50"
+                  sideOffset={10}
+                >
+                  <Popover.Popup className="w-64 rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-none">
+                    <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      Account
+                    </div>
+                    <div className="mt-2 text-sm font-medium">
+                      {mode === "local"
+                        ? "Local preview"
+                        : user?.email ?? user?.displayName ?? "Signed in"}
+                    </div>
+                    {isAuthEnabled ? (
+                      <Button
+                        className="mt-3 w-full justify-start"
+                        onClick={signOut}
+                        type="button"
+                        variant="outline"
+                      >
+                        <LogOut data-icon="inline-start" />
+                        Log out
+                      </Button>
+                    ) : null}
+                  </Popover.Popup>
+                </Popover.Positioner>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
         </div>
       </header>
       {children}
       {toast ? (
-        <div className="fixed right-6 bottom-6 rounded-lg border bg-card px-4 py-3 text-sm shadow-sm">
+        <div className="fixed right-6 bottom-20 z-20 rounded-lg border bg-card px-4 py-3 text-sm shadow-sm">
           {toast}
         </div>
       ) : null}
@@ -1671,6 +1719,7 @@ function AppShell({
 }
 
 export function App() {
+  const { isAuthEnabled, signOut, status, user } = useAuth()
   const [toast, setToast] = useState("")
 
   function showToast(message: string) {
@@ -1678,8 +1727,46 @@ export function App() {
     window.setTimeout(() => setToast(""), 3000)
   }
 
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background px-6 text-foreground">
+        <div className="max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-semibold">Connecting to Stella</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Restoring your session and loading the feedback tools.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isAuthEnabled && status === "unauthenticated") {
+    return <LoginPage />
+  }
+
+  if (status === "forbidden") {
+    return (
+      <AppShell onToast={showToast} toast={toast}>
+        <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1440px] items-center justify-center px-8 py-12">
+          <div className="max-w-xl rounded-xl border bg-card p-8 shadow-sm">
+            <h1 className="text-2xl font-semibold">Access not approved</h1>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              {user?.displayName ?? "This account"} signed in successfully, but
+              it is not in the Cognito group allowed to review the Stella POC.
+            </p>
+            <div className="mt-6">
+              <Button onClick={signOut} type="button" variant="outline">
+                Sign out
+              </Button>
+            </div>
+          </div>
+        </main>
+      </AppShell>
+    )
+  }
+
   return (
-    <AppShell toast={toast}>
+    <AppShell onToast={showToast} toast={toast}>
       <Routes>
         <Route element={<PatientListPage onToast={showToast} />} path="/" />
         <Route

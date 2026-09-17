@@ -141,7 +141,7 @@ const progressTrendPatientIds = new Set(["p-1021"])
 const patientPlans = [
   {
     patientId: "p-1021",
-    startOffset: 95,
+    startOffset: 84,
     activities: exerciseTypes,
     counts: [9, 7, 4, 7, 5],
   },
