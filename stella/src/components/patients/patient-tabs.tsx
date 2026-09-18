@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-export type PatientDetailTab = "dashboard" | "exercise-control"
+export type PatientDetailTab = "dashboard" | "exercise-control" | "analysis"
 
 export function PatientTabs({
   activeTab,
@@ -12,6 +12,7 @@ export function PatientTabs({
   const tabs: Array<{ id: PatientDetailTab; label: string }> = [
     { id: "dashboard", label: "Dashboard" },
     { id: "exercise-control", label: "Exercises" },
+    { id: "analysis", label: "Analysis" },
   ]
 
   return (

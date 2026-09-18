@@ -21,6 +21,8 @@ export function useFeedbackContext() {
     const tab =
       searchParams.get("tab") === "exercise-control"
         ? "exercise-control"
+        : searchParams.get("tab") === "analysis"
+          ? "analysis"
         : "dashboard"
 
     if (tab === "exercise-control") {
@@ -28,6 +30,15 @@ export function useFeedbackContext() {
         pageKey: "exercise-control",
         pageLabel: "Exercise control",
         routePath: "/patients/:patientId?tab=exercise-control",
+        tab,
+      }
+    }
+
+    if (tab === "analysis") {
+      return {
+        pageKey: "patient-analysis",
+        pageLabel: "Patient analysis",
+        routePath: "/patients/:patientId?tab=analysis",
         tab,
       }
     }

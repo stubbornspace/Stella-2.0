@@ -53,6 +53,7 @@ import { useAuth } from "@/components/auth/auth-context"
 import { LoginPage } from "@/components/auth/login-page"
 import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
 import { FeedbackWidget } from "@/components/feedback/feedback-widget"
+import { PatientAnalysisPanel } from "@/components/patients/patient-analysis-panel"
 import {
   PatientTabs,
   type PatientDetailTab,
@@ -476,8 +477,7 @@ function AddPatientDialog({
         <div>
           <h2 className="text-xl font-semibold">Add Patient</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a local POC patient record. Patient ID will be assigned
-            automatically.
+            Create a POC patient record. Patient ID will be assigned automatically.
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -799,6 +799,8 @@ function PatientSummaryPage({
   const activeTab: PatientDetailTab =
     searchParams.get("tab") === "exercise-control"
       ? "exercise-control"
+      : searchParams.get("tab") === "analysis"
+        ? "analysis"
       : "dashboard"
 
   function changeTab(tab: PatientDetailTab) {
@@ -863,13 +865,15 @@ function PatientSummaryPage({
             />
           </section>
         </>
-      ) : patientId ? (
+      ) : activeTab === "exercise-control" && patientId ? (
         <ExerciseControlPanel
           onToast={onToast}
           onViewDashboard={() => changeTab("dashboard")}
           patientId={patientId}
           patientName={patientName}
         />
+      ) : patientId ? (
+        <PatientAnalysisPanel patientId={patientId} patientName={patientName} />
       ) : null}
     </main>
   )
@@ -1733,7 +1737,7 @@ export function App() {
         <div className="max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold">Connecting to Stella</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Restoring your session and loading the feedback tools.
+            Restoring your session and loading Stella data and feedback tools.
           </p>
         </div>
       </div>

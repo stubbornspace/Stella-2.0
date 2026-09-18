@@ -2,6 +2,8 @@ import { startOfMonth, subDays } from "date-fns"
 
 import { exerciseDefinitions } from "@/config/exercises"
 import { seedPatients, seedSessions } from "@/data/seed"
+import { getValidIdToken } from "@/lib/auth"
+import { getRuntimeConfig } from "@/lib/runtime-config"
 import type {
   DashboardStats,
   ExerciseSession,
@@ -20,6 +22,48 @@ export type CreatePatientInput = {
   firstName: string
   lastName: string
   notes?: string
+}
+
+function remoteAppEnabled() {
+  const config = getRuntimeConfig()
+  return Boolean(config.auth.enabled && config.api.baseUrl)
+}
+
+async function apiRequest<T>(
+  path: string,
+  init?: RequestInit,
+  options?: {
+    allowNotFound?: boolean
+  }
+) {
+  const config = getRuntimeConfig()
+  const idToken = await getValidIdToken()
+
+  if (!config.api.baseUrl || !idToken) {
+    throw new Error("Stella API is not configured for this session.")
+  }
+
+  const response = await fetch(`${config.api.baseUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  if (options?.allowNotFound && response.status === 404) {
+    return undefined
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      | { message?: string }
+      | undefined
+    throw new Error(body?.message || "Stella request failed.")
+  }
+
+  return (await response.json()) as T
 }
 
 function delay(ms = 200) {
@@ -178,6 +222,16 @@ export function getSessionDisplayValue(session: ExerciseSession, key: string) {
 }
 
 export async function getPatients(): Promise<PatientWithStats[]> {
+  if (remoteAppEnabled()) {
+    const patients = await apiRequest<PatientWithStats[]>("/patients", {
+      method: "GET",
+    })
+    if (patients === undefined) {
+      throw new Error("Stella API returned no patients.")
+    }
+    return patients
+  }
+
   await delay()
   const patients = readPatients()
   const sessions = readSessions()
@@ -208,6 +262,12 @@ export async function getPatients(): Promise<PatientWithStats[]> {
 export async function getPatient(
   patientId: string
 ): Promise<Patient | undefined> {
+  if (remoteAppEnabled()) {
+    return apiRequest<Patient>(`/patients/${patientId}`, { method: "GET" }, {
+      allowNotFound: true,
+    })
+  }
+
   await delay()
   return readPatients().find((patient) => patient.id === patientId)
 }
@@ -215,6 +275,17 @@ export async function getPatient(
 export async function createPatient(
   input: CreatePatientInput
 ): Promise<Patient> {
+  if (remoteAppEnabled()) {
+    const patient = await apiRequest<Patient>("/patients", {
+      body: JSON.stringify(input),
+      method: "POST",
+    })
+    if (patient === undefined) {
+      throw new Error("Stella API did not return the created patient.")
+    }
+    return patient
+  }
+
   await delay()
   const patients = readPatients()
   const normalizedCode = getNextPatientCode(patients)
@@ -236,6 +307,19 @@ export async function createPatient(
 export async function getPatientSessions(
   patientId: string
 ): Promise<ExerciseSession[]> {
+  if (remoteAppEnabled()) {
+    const sessions = await apiRequest<ExerciseSession[]>(
+      `/patients/${patientId}/sessions`,
+      {
+        method: "GET",
+      }
+    )
+    if (sessions === undefined) {
+      throw new Error("Stella API returned no session data.")
+    }
+    return sessions
+  }
+
   await delay()
   return readSessions()
     .filter((session) => session.patientId === patientId)
@@ -246,6 +330,19 @@ export async function getExerciseSessions(
   patientId: string,
   exerciseType: ExerciseType
 ): Promise<ExerciseSession[]> {
+  if (remoteAppEnabled()) {
+    const sessions = await apiRequest<ExerciseSession[]>(
+      `/patients/${patientId}/exercises/${exerciseType}/sessions`,
+      {
+        method: "GET",
+      }
+    )
+    if (sessions === undefined) {
+      throw new Error("Stella API returned no exercise session data.")
+    }
+    return sessions
+  }
+
   await delay()
   return readSessions()
     .filter(
@@ -256,6 +353,16 @@ export async function getExerciseSessions(
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
+  if (remoteAppEnabled()) {
+    const stats = await apiRequest<DashboardStats>("/dashboard", {
+      method: "GET",
+    })
+    if (stats === undefined) {
+      throw new Error("Stella API returned no dashboard data.")
+    }
+    return stats
+  }
+
   await delay()
   const patients = readPatients()
   const sessions = readSessions()
@@ -295,6 +402,23 @@ export async function saveExerciseRun({
   completedUnits,
   elapsedSeconds,
 }: SaveExerciseRunInput): Promise<ExerciseSession> {
+  if (remoteAppEnabled()) {
+    const session = await apiRequest<ExerciseSession>("/sessions", {
+      body: JSON.stringify({
+        completedUnits,
+        elapsedSeconds,
+        patientId,
+        setup,
+        status,
+      }),
+      method: "POST",
+    })
+    if (session === undefined) {
+      throw new Error("Stella API did not return the saved session.")
+    }
+    return session
+  }
+
   await delay(350)
 
   const sessionId = `mock-${patientId}-${setup.activity}-${Date.now()}`
