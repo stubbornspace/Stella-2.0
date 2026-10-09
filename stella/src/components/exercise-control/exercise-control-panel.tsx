@@ -778,7 +778,7 @@ function FinishedSession({
       <div className="mt-6 flex flex-wrap justify-end gap-2">
         <Button onClick={onRunAgain} type="button" variant="outline">
           <RotateCcw data-icon="inline-start" />
-          Run Another
+          Run Again
         </Button>
         <Button onClick={onViewDashboard} type="button">
           View Dashboard
@@ -988,7 +988,7 @@ export function ExerciseControlPanel({
       <section>
         <div
           aria-label="Exercise selection"
-          className="overflow-x-auto border-b"
+          className="overflow-x-auto overflow-y-hidden border-b"
           role="tablist"
         >
           <div className="flex min-w-max gap-6">

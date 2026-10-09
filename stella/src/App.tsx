@@ -267,15 +267,18 @@ function MetricCard({
 function PageHeader({
   title,
   description,
+  backAction,
   action,
 }: {
   title: string
   description?: string
+  backAction?: React.ReactNode
   action?: React.ReactNode
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
+        {backAction ? <div className="mb-3">{backAction}</div> : null}
         <h1 className="text-3xl font-semibold tracking-normal">{title}</h1>
         {description ? (
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -807,6 +810,9 @@ function PatientSummaryPage({
     searchParams.get("tab") === "analysis"
         ? "analysis"
         : "dashboard"
+  const patientSummaryDescription = patient
+    ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)} • Patient ID ${patient.patientCode}`
+    : "Loading patient activity."
 
   function changeTab(tab: PatientDetailTab) {
     const nextSearchParams = new URLSearchParams(searchParams)
@@ -822,30 +828,24 @@ function PatientSummaryPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-          <h1 className="text-3xl font-semibold tracking-normal">
-            {patientName}
-          </h1>
-          <div className="text-sm text-muted-foreground">
-            {patient
-              ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)}`
-              : "Loading patient activity."}
-          </div>
-          {patient ? (
-            <div className="text-sm text-muted-foreground">
-              Patient ID {patient.patientCode}
-            </div>
-          ) : null}
-        </div>
-
-        {patientId ? (
-          <Button onClick={() => navigate(`/patients/${patientId}/exercises`)} type="button">
-            <Play data-icon="inline-start" />
-            Run Exercise
+      <PageHeader
+        action={
+          patientId ? (
+            <Button onClick={() => navigate(`/patients/${patientId}/exercises`)} type="button">
+              <Play data-icon="inline-start" />
+              Run Exercise
+            </Button>
+          ) : null
+        }
+        backAction={
+          <Button onClick={() => navigate("/")} type="button" variant="ghost">
+            <ArrowLeft data-icon="inline-start" />
+            Back to patients
           </Button>
-        ) : null}
-      </div>
+        }
+        description={patientSummaryDescription}
+        title={patientName}
+      />
 
       <PatientTabs activeTab={activeTab} onTabChange={changeTab} />
 
@@ -867,15 +867,6 @@ function PatientSummaryPage({
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Exercise Performance</h2>
-              {patientId ? (
-                <Button
-                  onClick={() => navigate(`/patients/${patientId}/exercises`)}
-                  type="button"
-                  variant="outline"
-                >
-                  Run Exercise
-                </Button>
-              ) : null}
             </div>
             <DataTable
               emptyMessage={
@@ -920,18 +911,16 @@ function ExerciseSetupPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <PageHeader
+        backAction={
           <Button onClick={() => navigate(`/patients/${patientId}`)} type="button" variant="ghost">
             <ArrowLeft data-icon="inline-start" />
-            Back to dashboard
+            Back to patient
           </Button>
-          <h1 className="mt-3 text-3xl font-semibold tracking-normal">Run Exercise</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Configure and start a new session for {patientName}.
-          </p>
-        </div>
-      </div>
+        }
+        description={`Configure and start a new session for ${patientName}.`}
+        title="Run Exercise"
+      />
 
       <ExerciseControlPanel
         onToast={onToast}
@@ -1480,23 +1469,23 @@ function ExerciseDetailsPage() {
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
       <div>
         <PageHeader
+          backAction={
+            <Button
+              onClick={() => navigate(`/patients/${patientId}`)}
+              type="button"
+              variant="ghost"
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Back to patient
+            </Button>
+          }
           action={
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {isRunnableExercise(typedExercise) ? (
-                <Button onClick={handleRunExercise} type="button">
-                  <Play data-icon="inline-start" />
-                  Run Exercise
-                </Button>
-              ) : null}
-              <Button
-                onClick={() => navigate(`/patients/${patientId}`)}
-                type="button"
-                variant="ghost"
-              >
-                <ArrowLeft data-icon="inline-start" />
-                Back to patient
+            isRunnableExercise(typedExercise) ? (
+              <Button onClick={handleRunExercise} type="button">
+                <Play data-icon="inline-start" />
+                Run Exercise
               </Button>
-            </div>
+            ) : null
           }
           title={definition.label}
         />
@@ -1753,7 +1742,8 @@ function AppShell({
     <div className="min-h-svh bg-background text-foreground">
       <header className="border-b border-[#2a4568] bg-[#0b1b2f] text-[#c6a632]">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-8">
-          <Link className="flex min-w-0" to="/">
+          <Link className="flex min-w-0 items-center gap-3" to="/">
+            <img alt="Stella logo" className="h-9 w-9 shrink-0 object-contain" src="/logo.png" />
             <span className="font-heading text-xl font-bold">Stella</span>
           </Link>
           <HeaderBreadcrumbs />

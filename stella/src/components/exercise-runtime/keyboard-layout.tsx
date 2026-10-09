@@ -21,30 +21,22 @@ const keyboard: KeyData[][] = [
 export function KeyboardLayout({
   keyStates = {},
   onKeyClick,
-  foundLetters = [],
 }: {
   keyStates?: Record<number, KeyState>
   onKeyClick?: (id: number) => void
-  foundLetters?: string[]
 }) {
   const getKeyState = (id: number) => keyStates[id] ?? "idle"
 
   return (
-    <div className="@container flex h-full w-full items-center justify-center bg-white p-4">
+    <div className="flex h-full w-full items-center justify-center overflow-hidden bg-white p-2 sm:p-4">
       <div className="flex h-full w-full items-center justify-center">
-        <div className="w-fit rounded-3xl border-[min(8px,1cqw)] border-[#6b7280] bg-[#374151] p-[min(3cqw,3vh)] shadow-2xl">
-          <div className="mx-auto mb-[min(2vh,1.5cqw)] flex h-14 items-center justify-center gap-2 rounded-xl bg-[#091a2c] px-4">
-            {foundLetters.map((letter, index) => (
-              <span className="text-4xl font-bold text-[#c5a538] uppercase" key={`${letter}-${index}`}>
-                {letter}
-              </span>
-            ))}
-          </div>
-          <div className="space-y-[min(2.5vh,1.5cqw)]">
+        <div className="w-full max-w-[1200px] rounded-[clamp(20px,2.8vmin,32px)] border-[clamp(6px,0.8vmin,10px)] border-[#6b7280] bg-[#374151] p-[clamp(12px,2vmin,28px)] shadow-2xl">
+          <div className="space-y-[clamp(8px,1.4vmin,18px)]">
             {keyboard.map((row, rowIndex) => (
-              <div className="flex justify-center gap-[min(1.5cqw,1.5vh)]" key={rowIndex}>
+              <div className="grid grid-cols-10 gap-[clamp(8px,1.4vmin,18px)]" key={rowIndex}>
                 {row.map((key) => (
                   <KeyboardKey
+                    className="max-w-[110px] justify-self-center"
                     id={key.id}
                     key={key.id}
                     letter={key.letter}

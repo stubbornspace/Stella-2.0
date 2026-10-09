@@ -307,7 +307,7 @@ function FinishedRuntimeSession({
         })()
 
   return (
-    <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1440px] flex-col gap-6 px-8 py-8">
+    <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1440px] flex-col gap-4 px-6 py-6 md:px-8 md:py-8">
       <section className="mx-auto w-full max-w-4xl rounded-lg border bg-card p-6">
         <div
           className={cn(
@@ -436,8 +436,7 @@ function LetterTargetRuntime({
     },
   })
 
-  const { handleKeyClick, isPlaying, keyStates, letterStats, preload, startGame, stopGame } =
-    engine
+  const { handleKeyClick, isPlaying, keyStates, preload, startGame, stopGame } = engine
 
   useEffect(() => {
     preload()
@@ -466,21 +465,7 @@ function LetterTargetRuntime({
   useEffect(() => () => stopGame(), [stopGame])
 
   return (
-    <KeyboardLayout
-      foundLetters={
-        setup.contentMode === "words"
-          ? letterStats
-              .slice(
-                selectedWords
-                  .slice(0, wordIndexRef.current)
-                  .reduce((sum, word) => sum + word.key.length, 0)
-              )
-              .map((stat) => stat.letter)
-          : letterStats.map((stat) => stat.letter)
-      }
-      keyStates={keyStates}
-      onKeyClick={handleKeyClick}
-    />
+    <KeyboardLayout keyStates={keyStates} onKeyClick={handleKeyClick} />
   )
 }
 
@@ -568,8 +553,7 @@ function LetterFindRuntime({
     showTarget: false,
   })
 
-  const { handleKeyClick, isPlaying, keyStates, letterStats, preload, startGame, stopGame } =
-    engine
+  const { handleKeyClick, isPlaying, keyStates, preload, startGame, stopGame } = engine
 
   useEffect(() => {
     preload()
@@ -599,7 +583,6 @@ function LetterFindRuntime({
 
   return (
     <KeyboardLayout
-      foundLetters={letterStats.map((stat) => stat.letter)}
       keyStates={keyStates}
       onKeyClick={handleKeyClick}
     />
@@ -1026,7 +1009,7 @@ export function KeyboardRuntimePage({
         </div>
       </div>
 
-      <section className="min-h-[640px] rounded-lg border bg-card p-4">
+      <section className="flex min-h-0 flex-1 rounded-lg border bg-card p-2 md:p-4">
         {pendingRun.setup.activity === "letter-target" ? (
           <LetterTargetRuntime
             onPlayingChange={() => undefined}

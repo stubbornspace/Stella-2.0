@@ -48,7 +48,7 @@ export function KeyboardKey({
   return (
     <div
       className={cn(
-        "relative flex h-[7cqw] w-[7cqw] min-h-[60px] min-w-[60px] max-h-[100px] max-w-[100px] items-center justify-center rounded-full bg-[#091a2c] shadow-lg transition-all duration-200",
+        "relative flex aspect-square w-full items-center justify-center rounded-full bg-[#091a2c] shadow-lg transition-all duration-200",
         !disabled && !isBlank && "cursor-pointer hover:shadow-xl active:scale-95",
         disabled && "cursor-not-allowed opacity-50",
         className
@@ -62,7 +62,9 @@ export function KeyboardKey({
         )}
       >
         {letter ? (
-          <span className="text-2xl font-bold text-white uppercase">{letter}</span>
+          <span className="text-[clamp(1rem,2.3vw,2rem)] font-bold text-white uppercase">
+            {letter}
+          </span>
         ) : null}
       </div>
     </div>
