@@ -1,0 +1,24 @@
+[
+  {"id":"ready-to-play-01","text":"Ready to play?","output":"prompts/shared/ready-to-play-01.mp3","status":"planned"},
+  {"id":"correct-01","text":"Correct.","output":"prompts/shared/correct-01.mp3","status":"planned"},
+  {"id":"wrong-01","text":"Try again.","output":"prompts/shared/wrong-01.mp3","status":"planned"},
+  {"id":"wrong-02","text":"Not that one. Try again.","output":"prompts/shared/wrong-02.mp3","status":"planned"},
+  {"id":"wrong-03","text":"Let’s try that again.","output":"prompts/shared/wrong-03.mp3","status":"planned"},
+  {"id":"great-job-01","text":"Great job.","output":"prompts/shared/great-job-01.mp3","status":"planned"},
+  {"id":"youve-got-this-01","text":"You’ve got this.","output":"prompts/shared/youve-got-this-01.mp3","status":"planned"},
+  {"id":"keep-going-01","text":"Keep going.","output":"prompts/shared/keep-going-01.mp3","status":"planned"},
+  {"id":"nice-job-01","text":"Nice job.","output":"prompts/shared/nice-job-01.mp3","status":"planned"},
+
+  {"id":"tap-green-letters-beat-01","text":"Tap the green letters to the beat.","output":"prompts/letter-target/tap-the-green-letters-to-the-beat-01.mp3","status":"planned"},
+  {"id":"tap-green-letters-01","text":"Tap the green letters.","output":"prompts/letter-target/tap-the-green-letters-01.mp3","status":"planned"},
+  {"id":"spell-word-beat-01","text":"Tap each letter to spell the word, to the beat.","output":"prompts/letter-target/tap-each-letter-to-spell-the-word-to-the-beat-01.mp3","status":"planned"},
+  {"id":"spell-word-01","text":"Tap each letter to spell the word.","output":"prompts/letter-target/tap-each-letter-to-spell-the-word-01.mp3","status":"planned"},
+
+  {"id":"find-letter-beat-01","text":"Find the letter and tap it to the beat.","output":"prompts/letter-find/find-the-letter-and-tap-it-to-the-beat-01.mp3","status":"planned"},
+  {"id":"find-letter-01","text":"Find the letter and tap it.","output":"prompts/letter-find/find-the-letter-and-tap-it-01.mp3","status":"planned"},
+  {"id":"find-letters-spell-word-01","text":"Find the letters to spell the word.","output":"prompts/letter-find/find-the-letters-to-spell-the-word-01.mp3","status":"planned"},
+  {"id":"hit-the-letter-01","text":"Hit the letter.","output":"prompts/letter-find/hit-the-letter-01.mp3","status":"planned"},
+
+  {"id":"follow-lights-01","text":"Follow the lights with your eyes.","output":"prompts/eye-pong/follow-the-lights-with-your-eyes-01.mp3","status":"planned"},
+  {"id":"watch-lights-01","text":"Watch the lights move across the keyboard.","output":"prompts/eye-pong/watch-the-lights-move-across-the-keyboard-01.mp3","status":"planned"}
+]

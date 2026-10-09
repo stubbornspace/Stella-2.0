@@ -1,0 +1,1442 @@
+[
+  {
+    "id": "word-cat-01",
+    "text": "Cat",
+    "output": "words/cat.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-cat-01",
+    "text": "Let's spell the word cat.",
+    "output": "prompts/spell-word/spell-cat-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-dog-01",
+    "text": "Dog",
+    "output": "words/dog.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-dog-01",
+    "text": "Let's spell the word dog.",
+    "output": "prompts/spell-word/spell-dog-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-sun-01",
+    "text": "Sun",
+    "output": "words/sun.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-sun-01",
+    "text": "Let's spell the word sun.",
+    "output": "prompts/spell-word/spell-sun-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-sky-01",
+    "text": "Sky",
+    "output": "words/sky.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-sky-01",
+    "text": "Let's spell the word sky.",
+    "output": "prompts/spell-word/spell-sky-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-red-01",
+    "text": "Red",
+    "output": "words/red.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-red-01",
+    "text": "Let's spell the word red.",
+    "output": "prompts/spell-word/spell-red-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-box-01",
+    "text": "Box",
+    "output": "words/box.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-box-01",
+    "text": "Let's spell the word box.",
+    "output": "prompts/spell-word/spell-box-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-hat-01",
+    "text": "Hat",
+    "output": "words/hat.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-hat-01",
+    "text": "Let's spell the word hat.",
+    "output": "prompts/spell-word/spell-hat-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bed-01",
+    "text": "Bed",
+    "output": "words/bed.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bed-01",
+    "text": "Let's spell the word bed.",
+    "output": "prompts/spell-word/spell-bed-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-pen-01",
+    "text": "Pen",
+    "output": "words/pen.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-pen-01",
+    "text": "Let's spell the word pen.",
+    "output": "prompts/spell-word/spell-pen-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-map-01",
+    "text": "Map",
+    "output": "words/map.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-map-01",
+    "text": "Let's spell the word map.",
+    "output": "prompts/spell-word/spell-map-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-car-01",
+    "text": "Car",
+    "output": "words/car.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-car-01",
+    "text": "Let's spell the word car.",
+    "output": "prompts/spell-word/spell-car-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-run-01",
+    "text": "Run",
+    "output": "words/run.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-run-01",
+    "text": "Let's spell the word run.",
+    "output": "prompts/spell-word/spell-run-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-hop-01",
+    "text": "Hop",
+    "output": "words/hop.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-hop-01",
+    "text": "Let's spell the word hop.",
+    "output": "prompts/spell-word/spell-hop-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-fox-01",
+    "text": "Fox",
+    "output": "words/fox.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-fox-01",
+    "text": "Let's spell the word fox.",
+    "output": "prompts/spell-word/spell-fox-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bee-01",
+    "text": "Bee",
+    "output": "words/bee.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bee-01",
+    "text": "Let's spell the word bee.",
+    "output": "prompts/spell-word/spell-bee-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-leg-01",
+    "text": "Leg",
+    "output": "words/leg.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-leg-01",
+    "text": "Let's spell the word leg.",
+    "output": "prompts/spell-word/spell-leg-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-cup-01",
+    "text": "Cup",
+    "output": "words/cup.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-cup-01",
+    "text": "Let's spell the word cup.",
+    "output": "prompts/spell-word/spell-cup-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bat-01",
+    "text": "Bat",
+    "output": "words/bat.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bat-01",
+    "text": "Let's spell the word bat.",
+    "output": "prompts/spell-word/spell-bat-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-pig-01",
+    "text": "Pig",
+    "output": "words/pig.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-pig-01",
+    "text": "Let's spell the word pig.",
+    "output": "prompts/spell-word/spell-pig-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-jam-01",
+    "text": "Jam",
+    "output": "words/jam.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-jam-01",
+    "text": "Let's spell the word jam.",
+    "output": "prompts/spell-word/spell-jam-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bird-01",
+    "text": "Bird",
+    "output": "words/bird.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bird-01",
+    "text": "Let's spell the word bird.",
+    "output": "prompts/spell-word/spell-bird-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-cake-01",
+    "text": "Cake",
+    "output": "words/cake.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-cake-01",
+    "text": "Let's spell the word cake.",
+    "output": "prompts/spell-word/spell-cake-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-fish-01",
+    "text": "Fish",
+    "output": "words/fish.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-fish-01",
+    "text": "Let's spell the word fish.",
+    "output": "prompts/spell-word/spell-fish-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-frog-01",
+    "text": "Frog",
+    "output": "words/frog.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-frog-01",
+    "text": "Let's spell the word frog.",
+    "output": "prompts/spell-word/spell-frog-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-tree-01",
+    "text": "Tree",
+    "output": "words/tree.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-tree-01",
+    "text": "Let's spell the word tree.",
+    "output": "prompts/spell-word/spell-tree-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-star-01",
+    "text": "Star",
+    "output": "words/star.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-star-01",
+    "text": "Let's spell the word star.",
+    "output": "prompts/spell-word/spell-star-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-lamp-01",
+    "text": "Lamp",
+    "output": "words/lamp.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-lamp-01",
+    "text": "Let's spell the word lamp.",
+    "output": "prompts/spell-word/spell-lamp-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-book-01",
+    "text": "Book",
+    "output": "words/book.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-book-01",
+    "text": "Let's spell the word book.",
+    "output": "prompts/spell-word/spell-book-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-duck-01",
+    "text": "Duck",
+    "output": "words/duck.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-duck-01",
+    "text": "Let's spell the word duck.",
+    "output": "prompts/spell-word/spell-duck-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-hand-01",
+    "text": "Hand",
+    "output": "words/hand.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-hand-01",
+    "text": "Let's spell the word hand.",
+    "output": "prompts/spell-word/spell-hand-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-moon-01",
+    "text": "Moon",
+    "output": "words/moon.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-moon-01",
+    "text": "Let's spell the word moon.",
+    "output": "prompts/spell-word/spell-moon-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-boat-01",
+    "text": "Boat",
+    "output": "words/boat.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-boat-01",
+    "text": "Let's spell the word boat.",
+    "output": "prompts/spell-word/spell-boat-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-rain-01",
+    "text": "Rain",
+    "output": "words/rain.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-rain-01",
+    "text": "Let's spell the word rain.",
+    "output": "prompts/spell-word/spell-rain-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-coat-01",
+    "text": "Coat",
+    "output": "words/coat.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-coat-01",
+    "text": "Let's spell the word coat.",
+    "output": "prompts/spell-word/spell-coat-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-ball-01",
+    "text": "Ball",
+    "output": "words/ball.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-ball-01",
+    "text": "Let's spell the word ball.",
+    "output": "prompts/spell-word/spell-ball-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-door-01",
+    "text": "Door",
+    "output": "words/door.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-door-01",
+    "text": "Let's spell the word door.",
+    "output": "prompts/spell-word/spell-door-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-king-01",
+    "text": "King",
+    "output": "words/king.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-king-01",
+    "text": "Let's spell the word king.",
+    "output": "prompts/spell-word/spell-king-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-ship-01",
+    "text": "Ship",
+    "output": "words/ship.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-ship-01",
+    "text": "Let's spell the word ship.",
+    "output": "prompts/spell-word/spell-ship-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-play-01",
+    "text": "Play",
+    "output": "words/play.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-play-01",
+    "text": "Let's spell the word play.",
+    "output": "prompts/spell-word/spell-play-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-snow-01",
+    "text": "Snow",
+    "output": "words/snow.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-snow-01",
+    "text": "Let's spell the word snow.",
+    "output": "prompts/spell-word/spell-snow-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-apple-01",
+    "text": "Apple",
+    "output": "words/apple.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-apple-01",
+    "text": "Let's spell the word apple.",
+    "output": "prompts/spell-word/spell-apple-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-beach-01",
+    "text": "Beach",
+    "output": "words/beach.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-beach-01",
+    "text": "Let's spell the word beach.",
+    "output": "prompts/spell-word/spell-beach-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-cloud-01",
+    "text": "Cloud",
+    "output": "words/cloud.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-cloud-01",
+    "text": "Let's spell the word cloud.",
+    "output": "prompts/spell-word/spell-cloud-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-dance-01",
+    "text": "Dance",
+    "output": "words/dance.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-dance-01",
+    "text": "Let's spell the word dance.",
+    "output": "prompts/spell-word/spell-dance-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-truck-01",
+    "text": "Truck",
+    "output": "words/truck.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-truck-01",
+    "text": "Let's spell the word truck.",
+    "output": "prompts/spell-word/spell-truck-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-grape-01",
+    "text": "Grape",
+    "output": "words/grape.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-grape-01",
+    "text": "Let's spell the word grape.",
+    "output": "prompts/spell-word/spell-grape-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-smile-01",
+    "text": "Smile",
+    "output": "words/smile.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-smile-01",
+    "text": "Let's spell the word smile.",
+    "output": "prompts/spell-word/spell-smile-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-stone-01",
+    "text": "Stone",
+    "output": "words/stone.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-stone-01",
+    "text": "Let's spell the word stone.",
+    "output": "prompts/spell-word/spell-stone-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-chair-01",
+    "text": "Chair",
+    "output": "words/chair.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-chair-01",
+    "text": "Let's spell the word chair.",
+    "output": "prompts/spell-word/spell-chair-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-light-01",
+    "text": "Light",
+    "output": "words/light.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-light-01",
+    "text": "Let's spell the word light.",
+    "output": "prompts/spell-word/spell-light-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-water-01",
+    "text": "Water",
+    "output": "words/water.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-water-01",
+    "text": "Let's spell the word water.",
+    "output": "prompts/spell-word/spell-water-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-house-01",
+    "text": "House",
+    "output": "words/house.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-house-01",
+    "text": "Let's spell the word house.",
+    "output": "prompts/spell-word/spell-house-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bread-01",
+    "text": "Bread",
+    "output": "words/bread.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bread-01",
+    "text": "Let's spell the word bread.",
+    "output": "prompts/spell-word/spell-bread-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-plant-01",
+    "text": "Plant",
+    "output": "words/plant.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-plant-01",
+    "text": "Let's spell the word plant.",
+    "output": "prompts/spell-word/spell-plant-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-brain-01",
+    "text": "Brain",
+    "output": "words/brain.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-brain-01",
+    "text": "Let's spell the word brain.",
+    "output": "prompts/spell-word/spell-brain-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-clock-01",
+    "text": "Clock",
+    "output": "words/clock.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-clock-01",
+    "text": "Let's spell the word clock.",
+    "output": "prompts/spell-word/spell-clock-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-green-01",
+    "text": "Green",
+    "output": "words/green.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-green-01",
+    "text": "Let's spell the word green.",
+    "output": "prompts/spell-word/spell-green-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-sweet-01",
+    "text": "Sweet",
+    "output": "words/sweet.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-sweet-01",
+    "text": "Let's spell the word sweet.",
+    "output": "prompts/spell-word/spell-sweet-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-tiger-01",
+    "text": "Tiger",
+    "output": "words/tiger.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-tiger-01",
+    "text": "Let's spell the word tiger.",
+    "output": "prompts/spell-word/spell-tiger-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-zebra-01",
+    "text": "Zebra",
+    "output": "words/zebra.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-zebra-01",
+    "text": "Let's spell the word zebra.",
+    "output": "prompts/spell-word/spell-zebra-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-monkey-01",
+    "text": "Monkey",
+    "output": "words/monkey.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-monkey-01",
+    "text": "Let's spell the word monkey.",
+    "output": "prompts/spell-word/spell-monkey-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-purple-01",
+    "text": "Purple",
+    "output": "words/purple.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-purple-01",
+    "text": "Let's spell the word purple.",
+    "output": "prompts/spell-word/spell-purple-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-garden-01",
+    "text": "Garden",
+    "output": "words/garden.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-garden-01",
+    "text": "Let's spell the word garden.",
+    "output": "prompts/spell-word/spell-garden-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-rabbit-01",
+    "text": "Rabbit",
+    "output": "words/rabbit.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-rabbit-01",
+    "text": "Let's spell the word rabbit.",
+    "output": "prompts/spell-word/spell-rabbit-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-planet-01",
+    "text": "Planet",
+    "output": "words/planet.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-planet-01",
+    "text": "Let's spell the word planet.",
+    "output": "prompts/spell-word/spell-planet-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-castle-01",
+    "text": "Castle",
+    "output": "words/castle.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-castle-01",
+    "text": "Let's spell the word castle.",
+    "output": "prompts/spell-word/spell-castle-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-rocket-01",
+    "text": "Rocket",
+    "output": "words/rocket.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-rocket-01",
+    "text": "Let's spell the word rocket.",
+    "output": "prompts/spell-word/spell-rocket-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-button-01",
+    "text": "Button",
+    "output": "words/button.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-button-01",
+    "text": "Let's spell the word button.",
+    "output": "prompts/spell-word/spell-button-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-yellow-01",
+    "text": "Yellow",
+    "output": "words/yellow.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-yellow-01",
+    "text": "Let's spell the word yellow.",
+    "output": "prompts/spell-word/spell-yellow-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-bridge-01",
+    "text": "Bridge",
+    "output": "words/bridge.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-bridge-01",
+    "text": "Let's spell the word bridge.",
+    "output": "prompts/spell-word/spell-bridge-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-banana-01",
+    "text": "Banana",
+    "output": "words/banana.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-banana-01",
+    "text": "Let's spell the word banana.",
+    "output": "prompts/spell-word/spell-banana-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-orange-01",
+    "text": "Orange",
+    "output": "words/orange.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-orange-01",
+    "text": "Let's spell the word orange.",
+    "output": "prompts/spell-word/spell-orange-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-pencil-01",
+    "text": "Pencil",
+    "output": "words/pencil.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-pencil-01",
+    "text": "Let's spell the word pencil.",
+    "output": "prompts/spell-word/spell-pencil-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-soccer-01",
+    "text": "Soccer",
+    "output": "words/soccer.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-soccer-01",
+    "text": "Let's spell the word soccer.",
+    "output": "prompts/spell-word/spell-soccer-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-dragon-01",
+    "text": "Dragon",
+    "output": "words/dragon.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-dragon-01",
+    "text": "Let's spell the word dragon.",
+    "output": "prompts/spell-word/spell-dragon-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-window-01",
+    "text": "Window",
+    "output": "words/window.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-window-01",
+    "text": "Let's spell the word window.",
+    "output": "prompts/spell-word/spell-window-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-kitten-01",
+    "text": "Kitten",
+    "output": "words/kitten.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-kitten-01",
+    "text": "Let's spell the word kitten.",
+    "output": "prompts/spell-word/spell-kitten-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-silver-01",
+    "text": "Silver",
+    "output": "words/silver.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-silver-01",
+    "text": "Let's spell the word silver.",
+    "output": "prompts/spell-word/spell-silver-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-flower-01",
+    "text": "Flower",
+    "output": "words/flower.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-flower-01",
+    "text": "Let's spell the word flower.",
+    "output": "prompts/spell-word/spell-flower-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-stream-01",
+    "text": "Stream",
+    "output": "words/stream.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-stream-01",
+    "text": "Let's spell the word stream.",
+    "output": "prompts/spell-word/spell-stream-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-rainbow-01",
+    "text": "Rainbow",
+    "output": "words/rainbow.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-rainbow-01",
+    "text": "Let's spell the word rainbow.",
+    "output": "prompts/spell-word/spell-rainbow-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-balloon-01",
+    "text": "Balloon",
+    "output": "words/balloon.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-balloon-01",
+    "text": "Let's spell the word balloon.",
+    "output": "prompts/spell-word/spell-balloon-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-dolphin-01",
+    "text": "Dolphin",
+    "output": "words/dolphin.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-dolphin-01",
+    "text": "Let's spell the word dolphin.",
+    "output": "prompts/spell-word/spell-dolphin-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-monster-01",
+    "text": "Monster",
+    "output": "words/monster.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-monster-01",
+    "text": "Let's spell the word monster.",
+    "output": "prompts/spell-word/spell-monster-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-tractor-01",
+    "text": "Tractor",
+    "output": "words/tractor.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-tractor-01",
+    "text": "Let's spell the word tractor.",
+    "output": "prompts/spell-word/spell-tractor-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-captain-01",
+    "text": "Captain",
+    "output": "words/captain.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-captain-01",
+    "text": "Let's spell the word captain.",
+    "output": "prompts/spell-word/spell-captain-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-diamond-01",
+    "text": "Diamond",
+    "output": "words/diamond.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-diamond-01",
+    "text": "Let's spell the word diamond.",
+    "output": "prompts/spell-word/spell-diamond-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-giraffe-01",
+    "text": "Giraffe",
+    "output": "words/giraffe.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-giraffe-01",
+    "text": "Let's spell the word giraffe.",
+    "output": "prompts/spell-word/spell-giraffe-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-library-01",
+    "text": "Library",
+    "output": "words/library.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-library-01",
+    "text": "Let's spell the word library.",
+    "output": "prompts/spell-word/spell-library-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-popcorn-01",
+    "text": "Popcorn",
+    "output": "words/popcorn.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-popcorn-01",
+    "text": "Let's spell the word popcorn.",
+    "output": "prompts/spell-word/spell-popcorn-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-picture-01",
+    "text": "Picture",
+    "output": "words/picture.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-picture-01",
+    "text": "Let's spell the word picture.",
+    "output": "prompts/spell-word/spell-picture-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-teacher-01",
+    "text": "Teacher",
+    "output": "words/teacher.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-teacher-01",
+    "text": "Let's spell the word teacher.",
+    "output": "prompts/spell-word/spell-teacher-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-journey-01",
+    "text": "Journey",
+    "output": "words/journey.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-journey-01",
+    "text": "Let's spell the word journey.",
+    "output": "prompts/spell-word/spell-journey-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-lantern-01",
+    "text": "Lantern",
+    "output": "words/lantern.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-lantern-01",
+    "text": "Let's spell the word lantern.",
+    "output": "prompts/spell-word/spell-lantern-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-thunder-01",
+    "text": "Thunder",
+    "output": "words/thunder.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-thunder-01",
+    "text": "Let's spell the word thunder.",
+    "output": "prompts/spell-word/spell-thunder-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-penguin-01",
+    "text": "Penguin",
+    "output": "words/penguin.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-penguin-01",
+    "text": "Let's spell the word penguin.",
+    "output": "prompts/spell-word/spell-penguin-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-cupcake-01",
+    "text": "Cupcake",
+    "output": "words/cupcake.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-cupcake-01",
+    "text": "Let's spell the word cupcake.",
+    "output": "prompts/spell-word/spell-cupcake-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-morning-01",
+    "text": "Morning",
+    "output": "words/morning.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-morning-01",
+    "text": "Let's spell the word morning.",
+    "output": "prompts/spell-word/spell-morning-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-blanket-01",
+    "text": "Blanket",
+    "output": "words/blanket.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-blanket-01",
+    "text": "Let's spell the word blanket.",
+    "output": "prompts/spell-word/spell-blanket-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-freedom-01",
+    "text": "Freedom",
+    "output": "words/freedom.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-freedom-01",
+    "text": "Let's spell the word freedom.",
+    "output": "prompts/spell-word/spell-freedom-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-backpack-01",
+    "text": "Backpack",
+    "output": "words/backpack.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-backpack-01",
+    "text": "Let's spell the word backpack.",
+    "output": "prompts/spell-word/spell-backpack-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-elephant-01",
+    "text": "Elephant",
+    "output": "words/elephant.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-elephant-01",
+    "text": "Let's spell the word elephant.",
+    "output": "prompts/spell-word/spell-elephant-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-hospital-01",
+    "text": "Hospital",
+    "output": "words/hospital.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-hospital-01",
+    "text": "Let's spell the word hospital.",
+    "output": "prompts/spell-word/spell-hospital-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-notebook-01",
+    "text": "Notebook",
+    "output": "words/notebook.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-notebook-01",
+    "text": "Let's spell the word notebook.",
+    "output": "prompts/spell-word/spell-notebook-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-football-01",
+    "text": "Football",
+    "output": "words/football.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-football-01",
+    "text": "Let's spell the word football.",
+    "output": "prompts/spell-word/spell-football-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-airplane-01",
+    "text": "Airplane",
+    "output": "words/airplane.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-airplane-01",
+    "text": "Let's spell the word airplane.",
+    "output": "prompts/spell-word/spell-airplane-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-birthday-01",
+    "text": "Birthday",
+    "output": "words/birthday.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-birthday-01",
+    "text": "Let's spell the word birthday.",
+    "output": "prompts/spell-word/spell-birthday-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-computer-01",
+    "text": "Computer",
+    "output": "words/computer.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-computer-01",
+    "text": "Let's spell the word computer.",
+    "output": "prompts/spell-word/spell-computer-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-dinosaur-01",
+    "text": "Dinosaur",
+    "output": "words/dinosaur.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-dinosaur-01",
+    "text": "Let's spell the word dinosaur.",
+    "output": "prompts/spell-word/spell-dinosaur-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-favorite-01",
+    "text": "Favorite",
+    "output": "words/favorite.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-favorite-01",
+    "text": "Let's spell the word favorite.",
+    "output": "prompts/spell-word/spell-favorite-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-building-01",
+    "text": "Building",
+    "output": "words/building.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-building-01",
+    "text": "Let's spell the word building.",
+    "output": "prompts/spell-word/spell-building-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-sandwich-01",
+    "text": "Sandwich",
+    "output": "words/sandwich.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-sandwich-01",
+    "text": "Let's spell the word sandwich.",
+    "output": "prompts/spell-word/spell-sandwich-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-triangle-01",
+    "text": "Triangle",
+    "output": "words/triangle.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-triangle-01",
+    "text": "Let's spell the word triangle.",
+    "output": "prompts/spell-word/spell-triangle-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-umbrella-01",
+    "text": "Umbrella",
+    "output": "words/umbrella.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-umbrella-01",
+    "text": "Let's spell the word umbrella.",
+    "output": "prompts/spell-word/spell-umbrella-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-vacation-01",
+    "text": "Vacation",
+    "output": "words/vacation.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-vacation-01",
+    "text": "Let's spell the word vacation.",
+    "output": "prompts/spell-word/spell-vacation-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-baseball-01",
+    "text": "Baseball",
+    "output": "words/baseball.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-baseball-01",
+    "text": "Let's spell the word baseball.",
+    "output": "prompts/spell-word/spell-baseball-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-sunshine-01",
+    "text": "Sunshine",
+    "output": "words/sunshine.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-sunshine-01",
+    "text": "Let's spell the word sunshine.",
+    "output": "prompts/spell-word/spell-sunshine-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-treasure-01",
+    "text": "Treasure",
+    "output": "words/treasure.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-treasure-01",
+    "text": "Let's spell the word treasure.",
+    "output": "prompts/spell-word/spell-treasure-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-snowfall-01",
+    "text": "Snowfall",
+    "output": "words/snowfall.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-snowfall-01",
+    "text": "Let's spell the word snowfall.",
+    "output": "prompts/spell-word/spell-snowfall-01.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "word-painting-01",
+    "text": "Painting",
+    "output": "words/painting.mp3",
+    "status": "planned"
+  },
+  {
+    "id": "spell-painting-01",
+    "text": "Let's spell the word painting.",
+    "output": "prompts/spell-word/spell-painting-01.mp3",
+    "status": "planned"
+  }
+]

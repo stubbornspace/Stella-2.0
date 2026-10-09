@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   LogOut,
+  Play,
   Plus,
   Search,
   UserRound,
@@ -52,6 +53,7 @@ import {
 import { useAuth } from "@/components/auth/auth-context"
 import { LoginPage } from "@/components/auth/login-page"
 import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
+import { KeyboardRuntimePage } from "@/components/exercise-runtime/keyboard-runtime-page"
 import { FeedbackWidget } from "@/components/feedback/feedback-widget"
 import { PatientAnalysisPanel } from "@/components/patients/patient-analysis-panel"
 import {
@@ -59,6 +61,10 @@ import {
   type PatientDetailTab,
 } from "@/components/patients/patient-tabs"
 import { Button } from "@/components/ui/button"
+import {
+  getDefaultExerciseSetup,
+  isRunnableExercise,
+} from "@/config/exercise-control"
 import { exerciseDefinitions, exerciseTypes } from "@/config/exercises"
 import {
   useCreatePatient,
@@ -68,6 +74,7 @@ import {
   usePatientSessions,
   usePatients,
 } from "@/hooks/use-stella"
+import { saveRerunExerciseSetup } from "@/lib/exercise-runtime/session-storage"
 import { cn } from "@/lib/utils"
 import type {
   ExerciseSession,
@@ -690,7 +697,7 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
 }
 
 function PatientSummaryPage({
-  onToast,
+  onToast: _onToast,
 }: {
   onToast: (message: string) => void
 }) {
@@ -797,11 +804,9 @@ function PatientSummaryPage({
     ? `${patient.firstName} ${patient.lastName}`
     : "Patient"
   const activeTab: PatientDetailTab =
-    searchParams.get("tab") === "exercise-control"
-      ? "exercise-control"
-      : searchParams.get("tab") === "analysis"
+    searchParams.get("tab") === "analysis"
         ? "analysis"
-      : "dashboard"
+        : "dashboard"
 
   function changeTab(tab: PatientDetailTab) {
     const nextSearchParams = new URLSearchParams(searchParams)
@@ -817,19 +822,28 @@ function PatientSummaryPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-        <h1 className="text-3xl font-semibold tracking-normal">
-          {patientName}
-        </h1>
-        <div className="text-sm text-muted-foreground">
-          {patient
-            ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)}`
-            : "Loading patient activity."}
-        </div>
-        {patient ? (
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+          <h1 className="text-3xl font-semibold tracking-normal">
+            {patientName}
+          </h1>
           <div className="text-sm text-muted-foreground">
-            Patient ID {patient.patientCode}
+            {patient
+              ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)}`
+              : "Loading patient activity."}
           </div>
+          {patient ? (
+            <div className="text-sm text-muted-foreground">
+              Patient ID {patient.patientCode}
+            </div>
+          ) : null}
+        </div>
+
+        {patientId ? (
+          <Button onClick={() => navigate(`/patients/${patientId}/exercises`)} type="button">
+            <Play data-icon="inline-start" />
+            Run Exercise
+          </Button>
         ) : null}
       </div>
 
@@ -851,7 +865,18 @@ function PatientSummaryPage({
           </div>
 
           <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold">Exercises</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Exercise Performance</h2>
+              {patientId ? (
+                <Button
+                  onClick={() => navigate(`/patients/${patientId}/exercises`)}
+                  type="button"
+                  variant="outline"
+                >
+                  Run Exercise
+                </Button>
+              ) : null}
+            </div>
             <DataTable
               emptyMessage={
                 sessionsQuery.isLoading
@@ -865,16 +890,55 @@ function PatientSummaryPage({
             />
           </section>
         </>
-      ) : activeTab === "exercise-control" && patientId ? (
-        <ExerciseControlPanel
-          onToast={onToast}
-          onViewDashboard={() => changeTab("dashboard")}
-          patientId={patientId}
-          patientName={patientName}
-        />
       ) : patientId ? (
         <PatientAnalysisPanel patientId={patientId} patientName={patientName} />
       ) : null}
+    </main>
+  )
+}
+
+function ExerciseSetupPage({
+  onToast,
+}: {
+  onToast: (message: string) => void
+}) {
+  const navigate = useNavigate()
+  const { patientId } = useParams()
+  const patientQuery = usePatient(patientId)
+
+  if (!patientQuery.isLoading && !patientQuery.data) {
+    return <Navigate replace to="/" />
+  }
+
+  if (!patientId) {
+    return <Navigate replace to="/" />
+  }
+
+  const patientName = patientQuery.data
+    ? `${patientQuery.data.firstName} ${patientQuery.data.lastName}`
+    : "Patient"
+
+  return (
+    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Button onClick={() => navigate(`/patients/${patientId}`)} type="button" variant="ghost">
+            <ArrowLeft data-icon="inline-start" />
+            Back to dashboard
+          </Button>
+          <h1 className="mt-3 text-3xl font-semibold tracking-normal">Run Exercise</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Configure and start a new session for {patientName}.
+          </p>
+        </div>
+      </div>
+
+      <ExerciseControlPanel
+        onToast={onToast}
+        onViewDashboard={() => navigate(`/patients/${patientId}`)}
+        patientId={patientId}
+        patientName={patientName}
+      />
     </main>
   )
 }
@@ -1399,19 +1463,40 @@ function ExerciseDetailsPage() {
     )
   }
 
+  function handleRunExercise() {
+    if (!patientId || !typedExercise || !isRunnableExercise(typedExercise)) {
+      return
+    }
+
+    saveRerunExerciseSetup({
+      patientId,
+      savedAt: `${Date.now()}`,
+      setup: getDefaultExerciseSetup(typedExercise),
+    })
+    navigate(`/patients/${patientId}/exercises`)
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
       <div>
         <PageHeader
           action={
-            <Button
-              onClick={() => navigate(`/patients/${patientId}`)}
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeft data-icon="inline-start" />
-              Back to patient
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {isRunnableExercise(typedExercise) ? (
+                <Button onClick={handleRunExercise} type="button">
+                  <Play data-icon="inline-start" />
+                  Run Exercise
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => navigate(`/patients/${patientId}`)}
+                type="button"
+                variant="ghost"
+              >
+                <ArrowLeft data-icon="inline-start" />
+                Back to patient
+              </Button>
+            </div>
           }
           title={definition.label}
         />
@@ -1598,15 +1683,22 @@ function HeaderBreadcrumbs() {
     "/patients/:patientId/exercises/:exerciseType",
     location.pathname
   )
+  const runtimeMatch = matchPath(
+    "/patients/:patientId/run/:exerciseType",
+    location.pathname
+  )
   const patientMatch = matchPath("/patients/:patientId", location.pathname)
   const patientId =
-    exerciseMatch?.params.patientId ?? patientMatch?.params.patientId
+    exerciseMatch?.params.patientId ??
+    runtimeMatch?.params.patientId ??
+    patientMatch?.params.patientId
   const patientQuery = usePatient(patientId)
   const patient = patientQuery.data
   const patientName = patient
     ? `${patient.firstName} ${patient.lastName}`
     : "Patient"
-  const exerciseType = exerciseMatch?.params.exerciseType as
+  const exerciseType = (exerciseMatch?.params.exerciseType ??
+    runtimeMatch?.params.exerciseType) as
     ExerciseType | undefined
   const exerciseDefinition =
     exerciseType && exerciseTypes.includes(exerciseType)
@@ -1778,8 +1870,16 @@ export function App() {
           path="/patients/:patientId"
         />
         <Route
+          element={<ExerciseSetupPage onToast={showToast} />}
+          path="/patients/:patientId/exercises"
+        />
+        <Route
           element={<ExerciseDetailsPage />}
           path="/patients/:patientId/exercises/:exerciseType"
+        />
+        <Route
+          element={<KeyboardRuntimePage onToast={showToast} />}
+          path="/patients/:patientId/run/:exerciseType"
         />
         <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>

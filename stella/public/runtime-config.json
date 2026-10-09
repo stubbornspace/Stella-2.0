@@ -1,8 +1,12 @@
 {
   "auth": {
-    "enabled": false
+    "enabled": true,
+    "region": "us-west-1",
+    "userPoolId": "us-west-1_XpJ2zOKFQ",
+    "userPoolClientId": "7ilaq6upgfvl2rrkmg92kk0vkr",
+    "requiredGroup": "stella-poc-users"
   },
   "api": {
-    "baseUrl": ""
+    "baseUrl": "https://ywcwtivnz1.execute-api.us-west-1.amazonaws.com"
   }
 }

@@ -9,8 +9,14 @@ export type RunnableExerciseType = Extract<
   | "motor-sequence-builder"
 >
 
+export type KeyboardRuntimeExerciseType = Extract<
+  RunnableExerciseType,
+  "letter-target" | "letter-find" | "eye-pong"
+>
+
 export type ExerciseAudioMode = "silent" | "metronome" | "music"
-export type WordLength = "0-5" | "5-10" | "10+"
+export type WordLength = "3" | "4" | "5" | "6" | "7" | "8"
+export type HistoricalWordLength = "0-5" | "5-10" | "10+"
 
 interface BaseExerciseSetup {
   activity: RunnableExerciseType
@@ -67,10 +73,57 @@ export type ExerciseSetup =
   | InhibitionChallengeSetup
   | MotorSequenceBuilderSetup
 
+export interface LetterRuntimeStat {
+  letter: string
+  attempts: number
+  timeMs: number
+  beatOffsetMs?: number
+}
+
+interface BaseExerciseRunResult {
+  activity: KeyboardRuntimeExerciseType
+  elapsedSeconds: number
+}
+
+export interface LetterTargetRunResult extends BaseExerciseRunResult {
+  activity: "letter-target"
+  actualBpm?: number
+  audioMode: ExerciseAudioMode
+  contentMode: "letters" | "words"
+  selectedWords?: string[]
+  stats: LetterRuntimeStat[]
+  wordLength?: WordLength
+}
+
+export interface LetterFindRunResult extends BaseExerciseRunResult {
+  activity: "letter-find"
+  actualBpm?: number
+  audioMode: ExerciseAudioMode
+  contentMode: "letters" | "words"
+  selectedWords?: string[]
+  stats: LetterRuntimeStat[]
+  wordLength?: WordLength
+}
+
+export interface EyePongRunResult extends BaseExerciseRunResult {
+  activity: "eye-pong"
+  audioMode: ExerciseAudioMode
+  completionRatePercent: number
+  mode: "left-right" | "random"
+  targetChanges: number
+}
+
+export type ExerciseRunResult =
+  | LetterTargetRunResult
+  | LetterFindRunResult
+  | EyePongRunResult
+
 export interface SaveExerciseRunInput {
   patientId: string
   setup: ExerciseSetup
   status: SessionStatus
   completedUnits: number
   elapsedSeconds: number
+  runId?: string
+  result?: ExerciseRunResult
 }

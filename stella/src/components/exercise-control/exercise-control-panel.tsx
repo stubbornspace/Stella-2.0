@@ -1,14 +1,22 @@
 import { Check, Play, RotateCcw, Square } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { getAvailableWordLengths } from "@/content/word-library"
 import {
   exerciseControlDefinitions,
   getDefaultExerciseSetup,
   isRunnableExercise,
+  supportsKeyboardRuntime,
 } from "@/config/exercise-control"
 import { exerciseDefinitions } from "@/config/exercises"
 import { useSaveExerciseRun } from "@/hooks/use-stella"
+import {
+  clearRerunExerciseSetup,
+  loadRerunExerciseSetup,
+  savePendingExerciseRun,
+} from "@/lib/exercise-runtime/session-storage"
 import { cn } from "@/lib/utils"
 import type { ExerciseSession, ExerciseType, SessionStatus } from "@/types"
 import type {
@@ -184,9 +192,13 @@ function LetterExerciseSettings({
       ...setup,
       contentMode,
       wordLength:
-        contentMode === "words" ? (setup.wordLength ?? "0-5") : undefined,
+        contentMode === "words"
+          ? (setup.wordLength ?? getAvailableWordLengths()[0] ?? "3")
+          : undefined,
     })
   }
+
+  const availableWordLengths = getAvailableWordLengths()
 
   const duration =
     setup.contentMode === "letters"
@@ -238,11 +250,13 @@ function LetterExerciseSettings({
                 wordLength: event.target.value as WordLength,
               })
             }
-            value={setup.wordLength ?? "0-5"}
+            value={setup.wordLength ?? availableWordLengths[0] ?? "3"}
           >
-            <option value="0-5">0–5</option>
-            <option value="5-10">5–10</option>
-            <option value="10+">10+</option>
+            {availableWordLengths.map((length) => (
+              <option key={length} value={length}>
+                {length} letters
+              </option>
+            ))}
           </select>
         </Field>
       ) : null}
@@ -785,6 +799,7 @@ export function ExerciseControlPanel({
   onToast: (message: string) => void
   onViewDashboard: () => void
 }) {
+  const navigate = useNavigate()
   const saveExerciseRun = useSaveExerciseRun()
   const [selectedExercise, setSelectedExercise] =
     useState<RunnableExerciseType>("letter-target")
@@ -795,6 +810,19 @@ export function ExerciseControlPanel({
   const savedRunId = useRef<string | null>(null)
   const runPhase = run?.phase
   const runId = run?.runId
+
+  useEffect(() => {
+    const rerunSetup = loadRerunExerciseSetup(patientId)
+
+    if (!rerunSetup || !isRunnableExercise(rerunSetup.setup.activity)) {
+      return
+    }
+
+    setSelectedExercise(rerunSetup.setup.activity)
+    setSetup(rerunSetup.setup)
+    setRun(null)
+    clearRerunExerciseSetup(patientId)
+  }, [patientId])
 
   useEffect(() => {
     if (runPhase !== "running") {
@@ -886,6 +914,16 @@ export function ExerciseControlPanel({
       return
     }
 
+    if (supportsKeyboardRuntime(setup.activity)) {
+      savePendingExerciseRun({
+        patientId,
+        savedAt: `${Date.now()}`,
+        setup: { ...setup },
+      })
+      navigate(`/patients/${patientId}/run/${setup.activity}`)
+      return
+    }
+
     savedRunId.current = null
     setRun({
       runId: `${Date.now()}`,
@@ -948,16 +986,9 @@ export function ExerciseControlPanel({
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <div>
-          <h2 className="text-xl font-semibold">Choose an exercise</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Configure a patient-specific session, review the settings, then
-            start the simulator.
-          </p>
-        </div>
         <div
           aria-label="Exercise selection"
-          className="mt-4 overflow-x-auto border-b"
+          className="overflow-x-auto border-b"
           role="tablist"
         >
           <div className="flex min-w-max gap-6">
@@ -1036,8 +1067,9 @@ export function ExerciseControlPanel({
             ))}
           </div>
           <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-            This starts a simulated session. No physical keyboard commands are
-            sent.
+            {supportsKeyboardRuntime(selectedExercise)
+              ? "This launches the live keyboard exercise and saves the captured run data."
+              : "This exercise still uses simulated session results in the prototype."}
           </div>
           <Button
             className="mt-5 w-full"

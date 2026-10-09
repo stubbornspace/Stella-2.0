@@ -23,6 +23,7 @@ export interface BaseSession {
   sessionDate: string
   status: SessionStatus
   summary: string
+  rawEventPayload?: unknown
   musicPlaybackRate?: number
   activeEngagementTimeMinutes?: number
   totalSessionDurationMinutes?: number
@@ -34,7 +35,7 @@ export interface LetterTargetSession extends BaseSession {
   activity: "letter-target"
   contentMode: "letters" | "words"
   itemsPerSession: number
-  wordLength?: "0-5" | "5-10" | "10+"
+  wordLength?: "3" | "4" | "5" | "6" | "7" | "8" | "0-5" | "5-10" | "10+"
   audioMode: "silent" | "metronome" | "music"
   tempoBpm?: number
   timeoutSeconds?: number
@@ -56,7 +57,7 @@ export interface LetterFindSession extends BaseSession {
   activity: "letter-find"
   contentMode: "letters" | "words"
   itemsPerSession?: number
-  wordLength?: "0-5" | "5-10" | "10+"
+  wordLength?: "3" | "4" | "5" | "6" | "7" | "8" | "0-5" | "5-10" | "10+"
   itemsCompleted: number
   itemsTotal: number
   totalAttempts: number

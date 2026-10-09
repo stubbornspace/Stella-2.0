@@ -12,7 +12,11 @@ import type {
   Patient,
   PatientWithStats,
 } from "@/types"
-import type { SaveExerciseRunInput } from "@/types/exercise-control"
+import type {
+  ExerciseRunResult,
+  LetterRuntimeStat,
+  SaveExerciseRunInput,
+} from "@/types/exercise-control"
 
 const patientStorageKey = "stella-poc-patients"
 const sessionStorageKey = "stella-poc-added-sessions"
@@ -395,12 +399,231 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum)
 }
 
+function computeLetterMetrics(stats: LetterRuntimeStat[]) {
+  const totalAttempts = stats.reduce((sum, stat) => sum + stat.attempts, 0)
+  const incorrectAttempts = stats.reduce(
+    (sum, stat) => sum + Math.max(0, stat.attempts - 1),
+    0
+  )
+  const correctHits = stats.length
+  const firstAttemptSuccessRatePercent =
+    correctHits > 0
+      ? round(
+          (stats.filter((stat) => stat.attempts === 1).length / correctHits) *
+            100
+        )
+      : 0
+  const meanCorrectLatencyMs =
+    correctHits > 0
+      ? round(
+          stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits
+        )
+      : 0
+  const mean =
+    correctHits > 0
+      ? stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits
+      : 0
+  const latencyVariabilityStdDev =
+    correctHits > 0
+      ? round(
+          Math.sqrt(
+            stats.reduce((sum, stat) => sum + (stat.timeMs - mean) ** 2, 0) /
+              correctHits
+          )
+        )
+      : 0
+
+  return {
+    correctHits,
+    firstAttemptSuccessRatePercent,
+    incorrectAttempts,
+    latencyVariabilityStdDev,
+    meanCorrectLatencyMs,
+    totalAttempts,
+  }
+}
+
+function computeBeatMetrics(stats: LetterRuntimeStat[], actualBpm?: number) {
+  if (!actualBpm) {
+    return {
+      onBeatAccuracyPercent: undefined,
+      timingVariabilityStdDev: undefined,
+    }
+  }
+
+  const offsets = stats
+    .map((stat) => stat.beatOffsetMs)
+    .filter((value): value is number => typeof value === "number")
+
+  if (offsets.length === 0) {
+    return {
+      onBeatAccuracyPercent: undefined,
+      timingVariabilityStdDev: undefined,
+    }
+  }
+
+  const beatIntervalMs = (60 / actualBpm) * 1000
+  const halfInterval = beatIntervalMs / 2
+  const onBeatAccuracyPercent = round(
+    offsets.reduce((sum, beatOffsetMs) => {
+      const distanceToNearestBeat =
+        beatOffsetMs > halfInterval ? beatIntervalMs - beatOffsetMs : beatOffsetMs
+      return sum + (1 - distanceToNearestBeat / halfInterval) * 100
+    }, 0) / offsets.length
+  )
+  const meanOffset = offsets.reduce((sum, value) => sum + value, 0) / offsets.length
+  const timingVariabilityStdDev = round(
+    Math.sqrt(
+      offsets.reduce((sum, value) => sum + (value - meanOffset) ** 2, 0) /
+        offsets.length
+    )
+  )
+
+  return {
+    onBeatAccuracyPercent: clamp(onBeatAccuracyPercent, 0, 100),
+    timingVariabilityStdDev,
+  }
+}
+
+function buildSessionFromResult({
+  completedUnits,
+  durationMinutes,
+  patientId,
+  result,
+  sessionDate,
+  sessionId,
+  setup,
+  status,
+}: {
+  completedUnits: number
+  durationMinutes: number
+  patientId: string
+  result: ExerciseRunResult
+  sessionDate: string
+  sessionId: string
+  setup: SaveExerciseRunInput["setup"]
+  status: SaveExerciseRunInput["status"]
+}): ExerciseSession {
+  const baseSession = {
+    sessionId,
+    patientId,
+    activity: result.activity,
+    sessionDate,
+    status,
+    summary: "Captured keyboard exercise session.",
+    activeEngagementTimeMinutes: durationMinutes,
+    totalSessionDurationMinutes: durationMinutes,
+    pauseBreakCount: 0,
+    rawEventPayload: result,
+  }
+
+  if (result.activity === "eye-pong" && setup.activity === "eye-pong") {
+    return {
+      ...baseSession,
+      activity: "eye-pong",
+      audioMode: result.audioMode,
+      completionRatePercent: result.completionRatePercent,
+      mode: result.mode,
+      musicPlaybackRate:
+        result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
+      pattern: result.mode === "left-right" ? "horizontal" : "mixed",
+      targetChanges: result.targetChanges,
+      tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
+    }
+  }
+
+  const letterSetup =
+    result.activity === "letter-target" && setup.activity === "letter-target"
+      ? setup
+      : result.activity === "letter-find" && setup.activity === "letter-find"
+        ? setup
+        : null
+
+  if (!letterSetup || result.activity === "eye-pong") {
+    return {
+      ...baseSession,
+      activity: setup.activity,
+      summary: "Captured exercise session.",
+    } as ExerciseSession
+  }
+
+  const itemsTotal =
+    letterSetup.contentMode === "letters"
+      ? letterSetup.numberOfLetters
+      : letterSetup.numberOfWords
+  const itemsCompleted = Math.min(completedUnits, itemsTotal)
+  const metrics = computeLetterMetrics(result.stats)
+  const accuracyPercent =
+    metrics.totalAttempts === 0
+      ? 0
+      : round((metrics.correctHits / metrics.totalAttempts) * 100)
+  const attemptsPerMinute =
+    durationMinutes > 0 ? round(metrics.totalAttempts / durationMinutes, 1) : 0
+  const beatMetrics = computeBeatMetrics(result.stats, result.actualBpm)
+
+  if (result.activity === "letter-target") {
+    return {
+      ...baseSession,
+      activity: "letter-target",
+      accuracyPercent,
+      attemptsPerMinute,
+      audioMode: result.audioMode,
+      contentMode: result.contentMode,
+      correctHits: metrics.correctHits,
+      directionalConsistencyPercent: undefined,
+      firstAttemptSuccessRatePercent: metrics.firstAttemptSuccessRatePercent,
+      incorrectAttempts: metrics.incorrectAttempts,
+      itemsCompleted,
+      itemsPerSession: itemsTotal,
+      itemsTotal,
+      latencyVariabilityStdDev: metrics.latencyVariabilityStdDev,
+      meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
+      musicPlaybackRate:
+        result.audioMode === "music" ? letterSetup.musicPlaybackRate : undefined,
+      onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
+      tempoBpm:
+        result.audioMode === "metronome" ? letterSetup.tempoBpm : undefined,
+      timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
+      totalAttempts: metrics.totalAttempts,
+      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+    }
+  }
+
+  if (result.activity === "letter-find") {
+    return {
+      ...baseSession,
+      activity: "letter-find",
+      accuracyPercent,
+      attemptsPerMinute,
+      audioMode: result.audioMode,
+      contentMode: result.contentMode,
+      correctHits: metrics.correctHits,
+      firstAttemptSuccessRatePercent: metrics.firstAttemptSuccessRatePercent,
+      incorrectAttempts: metrics.incorrectAttempts,
+      itemsCompleted,
+      itemsPerSession: itemsTotal,
+      itemsTotal,
+      meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
+      musicPlaybackRate:
+        result.audioMode === "music" ? letterSetup.musicPlaybackRate : undefined,
+      tempoBpm:
+        result.audioMode === "metronome" ? letterSetup.tempoBpm : undefined,
+      totalAttempts: metrics.totalAttempts,
+      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+    }
+  }
+
+  return baseSession as ExerciseSession
+}
+
 export async function saveExerciseRun({
   patientId,
   setup,
   status,
   completedUnits,
   elapsedSeconds,
+  runId,
+  result,
 }: SaveExerciseRunInput): Promise<ExerciseSession> {
   if (remoteAppEnabled()) {
     const session = await apiRequest<ExerciseSession>("/sessions", {
@@ -408,6 +631,8 @@ export async function saveExerciseRun({
         completedUnits,
         elapsedSeconds,
         patientId,
+        result,
+        runId,
         setup,
         status,
       }),
@@ -421,9 +646,28 @@ export async function saveExerciseRun({
 
   await delay(350)
 
-  const sessionId = `mock-${patientId}-${setup.activity}-${Date.now()}`
+  const sessionId = runId
+    ? `runtime-${patientId}-${setup.activity}-${runId}`
+    : `mock-${patientId}-${setup.activity}-${Date.now()}`
   const sessionDate = new Date().toISOString()
   const durationMinutes = Math.max(1, round(elapsedSeconds / 60, 1))
+
+  if (result) {
+    const session = buildSessionFromResult({
+      completedUnits,
+      durationMinutes,
+      patientId,
+      result,
+      sessionDate,
+      sessionId,
+      setup,
+      status,
+    })
+
+    writeAddedSessions([session, ...readAddedSessions()])
+    return session
+  }
+
   const baseSession = {
     sessionId,
     patientId,
@@ -435,6 +679,7 @@ export async function saveExerciseRun({
     activeEngagementTimeMinutes: durationMinutes,
     totalSessionDurationMinutes: durationMinutes,
     pauseBreakCount: 0,
+    rawEventPayload: null,
   }
 
   let session: ExerciseSession

@@ -1,8 +1,10 @@
 import type { ExerciseType } from "@/types"
+import { getAvailableWordLengths } from "@/content/word-library"
 import type {
   ExerciseSetup,
   EyePongSetup,
   InhibitionChallengeSetup,
+  KeyboardRuntimeExerciseType,
   LetterFindSetup,
   LetterTargetSetup,
   MotorSequenceBuilderSetup,
@@ -45,6 +47,8 @@ export const exerciseControlDefinitions: ExerciseControlDefinition[] = [
   },
 ]
 
+const defaultWordLength = getAvailableWordLengths()[0] ?? "3"
+
 const defaultLetterTargetSetup: LetterTargetSetup = {
   activity: "letter-target",
   contentMode: "letters",
@@ -53,6 +57,7 @@ const defaultLetterTargetSetup: LetterTargetSetup = {
   audioMode: "metronome",
   tempoBpm: 54,
   musicPlaybackRate: 1,
+  wordLength: defaultWordLength,
 }
 
 const defaultLetterFindSetup: LetterFindSetup = {
@@ -63,6 +68,7 @@ const defaultLetterFindSetup: LetterFindSetup = {
   audioMode: "metronome",
   tempoBpm: 54,
   musicPlaybackRate: 1,
+  wordLength: defaultWordLength,
 }
 
 const defaultEyePongSetup: EyePongSetup = {
@@ -98,6 +104,12 @@ const defaultSetups: Record<RunnableExerciseType, ExerciseSetup> = {
   "motor-sequence-builder": defaultMotorSequenceBuilderSetup,
 }
 
+const keyboardRuntimeExerciseTypes: KeyboardRuntimeExerciseType[] = [
+  "letter-target",
+  "letter-find",
+  "eye-pong",
+]
+
 export function getDefaultExerciseSetup(
   activity: RunnableExerciseType
 ): ExerciseSetup {
@@ -111,4 +123,10 @@ export function isRunnableExercise(
     (definition) =>
       definition.id === activity && definition.availability === "available"
   )
+}
+
+export function supportsKeyboardRuntime(
+  activity: RunnableExerciseType
+): activity is KeyboardRuntimeExerciseType {
+  return keyboardRuntimeExerciseTypes.includes(activity as KeyboardRuntimeExerciseType)
 }
