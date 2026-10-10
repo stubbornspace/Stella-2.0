@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { getAvailableWordLengths } from "@/content/word-library"
+import {
+  getAvailableWordLengths,
+  getWordsByLength,
+} from "@/content/word-library"
 import {
   exerciseControlDefinitions,
   getDefaultExerciseSetup,
@@ -19,6 +22,7 @@ import {
 } from "@/lib/exercise-runtime/session-storage"
 import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
 import { EYE_PONG_TARGET_COUNT } from "@/lib/exercise-runtime/eye-pong"
+import { getKeyboardLetters } from "@/lib/exercise-runtime/keyboard-map"
 import { cn } from "@/lib/utils"
 import type { ExerciseSession, ExerciseType, SessionStatus } from "@/types"
 import type {
@@ -182,6 +186,87 @@ function SliderSetting({
   )
 }
 
+function KeyboardSettings({
+  setup,
+  onChange,
+}: {
+  setup: ExerciseSetup
+  onChange: (setup: ExerciseSetup) => void
+}) {
+  const isLetterFind = setup.activity === "letter-find"
+  const letters = getKeyboardLetters(
+    setup.keyboardLayout ?? "qwerty",
+    setup.keyboardSide ?? "full"
+  )
+
+  return (
+    <div className="grid gap-5 md:grid-cols-3">
+      <Field label="Keyboard layout">
+        <select
+          className={inputClassName}
+          onChange={(event) =>
+            onChange({
+              ...setup,
+              keyboardLayout: event.target
+                .value as ExerciseSetup["keyboardLayout"],
+            })
+          }
+          value={setup.keyboardLayout ?? "qwerty"}
+        >
+          <option value="qwerty">QWERTY</option>
+          <option value="alphabetical">Alphabetical</option>
+        </select>
+      </Field>
+      <Field
+        helper={
+          setup.keyboardSide === "full"
+            ? "All 26 letter keys are available."
+            : `${letters.length} letters: ${letters.join(" ")}`
+        }
+        label="Keyboard side"
+      >
+        <select
+          className={inputClassName}
+          onChange={(event) =>
+            onChange({
+              ...setup,
+              keyboardSide: event.target.value as ExerciseSetup["keyboardSide"],
+            })
+          }
+          value={setup.keyboardSide ?? "full"}
+        >
+          <option value="full">Full</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </select>
+      </Field>
+      <Field
+        helper={
+          isLetterFind
+            ? "Letter Find keeps labels visible so the requested letter can be found."
+            : "Blank keys still light up and respond."
+        }
+        label="Key labels"
+      >
+        <select
+          className={inputClassName}
+          disabled={isLetterFind}
+          onChange={(event) =>
+            onChange({
+              ...setup,
+              keyLabels: event.target.value as ExerciseSetup["keyLabels"],
+            })
+          }
+          value={isLetterFind ? "letters" : (setup.keyLabels ?? "letters")}
+        >
+          <option value="letters">Show letters</option>
+          <option value="blank">Blank</option>
+        </select>
+      </Field>
+    </div>
+  )
+}
+
 function LetterExerciseSettings({
   setup,
   onChange,
@@ -201,6 +286,19 @@ function LetterExerciseSettings({
   }
 
   const availableWordLengths = getAvailableWordLengths()
+  const allowedLetters = new Set(
+    getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
+  )
+  const matchingWordCount = setup.wordLength
+    ? getWordsByLength(setup.wordLength, { availableOnly: true }).filter(
+        (word) =>
+          setup.keyboardSide === "full" ||
+          word.key
+            .toUpperCase()
+            .split("")
+            .every((letter) => allowedLetters.has(letter))
+      ).length
+    : 0
 
   const duration =
     setup.contentMode === "letters"
@@ -243,7 +341,14 @@ function LetterExerciseSettings({
         />
       </Field>
       {setup.contentMode === "words" ? (
-        <Field label="Word length">
+        <Field
+          helper={
+            matchingWordCount > 0
+              ? `${matchingWordCount} prescribed words fit this keyboard configuration.`
+              : "No prescribed words fit this keyboard configuration."
+          }
+          label="Word length"
+        >
           <select
             className={inputClassName}
             onChange={(event) =>
@@ -312,6 +417,21 @@ function EyePongSettings({
           <option value="left-right">Left / Right</option>
           <option value="random">Random</option>
         </select>
+      </Field>
+      <Field
+        helper="Choose between 1 and 10 programmed target changes."
+        label="Target changes"
+      >
+        <input
+          className={inputClassName}
+          max={10}
+          min={1}
+          onChange={(event) =>
+            onChange({ ...setup, targetCount: Number(event.target.value) })
+          }
+          type="number"
+          value={setup.targetCount ?? EYE_PONG_TARGET_COUNT}
+        />
       </Field>
       <AudioSettings
         audioMode={setup.audioMode}
@@ -513,17 +633,36 @@ function ExerciseSettings({
   setup: ExerciseSetup
   onChange: (setup: ExerciseSetup) => void
 }) {
+  let activitySettings: React.ReactNode
+
   switch (setup.activity) {
     case "letter-target":
     case "letter-find":
-      return <LetterExerciseSettings onChange={onChange} setup={setup} />
+      activitySettings = (
+        <LetterExerciseSettings onChange={onChange} setup={setup} />
+      )
+      break
     case "eye-pong":
-      return <EyePongSettings onChange={onChange} setup={setup} />
+      activitySettings = <EyePongSettings onChange={onChange} setup={setup} />
+      break
     case "inhibition-challenge":
-      return <InhibitionChallengeSettings onChange={onChange} setup={setup} />
+      activitySettings = (
+        <InhibitionChallengeSettings onChange={onChange} setup={setup} />
+      )
+      break
     case "motor-sequence-builder":
-      return <MotorSequenceBuilderSettings onChange={onChange} setup={setup} />
+      activitySettings = (
+        <MotorSequenceBuilderSettings onChange={onChange} setup={setup} />
+      )
+      break
   }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <KeyboardSettings onChange={onChange} setup={setup} />
+      {activitySettings}
+    </div>
+  )
 }
 
 function formatSetupValue(value: string) {
@@ -536,6 +675,17 @@ function formatSetupValue(value: string) {
 function getSetupRows(setup: ExerciseSetup): Array<[string, string]> {
   const rows: Array<[string, string]> = [
     ["Exercise", exerciseDefinitions[setup.activity].label],
+    [
+      "Keyboard layout",
+      setup.keyboardLayout === "alphabetical" ? "Alphabetical" : "QWERTY",
+    ],
+    ["Keyboard side", formatSetupValue(setup.keyboardSide ?? "full")],
+    [
+      "Key labels",
+      setup.activity === "letter-find" || setup.keyLabels !== "blank"
+        ? "Show letters"
+        : "Blank",
+    ],
   ]
 
   if (setup.activity === "letter-target" || setup.activity === "letter-find") {
@@ -565,7 +715,7 @@ function getSetupRows(setup: ExerciseSetup): Array<[string, string]> {
     }
   } else if (setup.activity === "eye-pong") {
     rows.push(["Mode", setup.mode === "left-right" ? "Left / Right" : "Random"])
-    rows.push(["Targets", String(EYE_PONG_TARGET_COUNT)])
+    rows.push(["Targets", String(setup.targetCount ?? EYE_PONG_TARGET_COUNT)])
     rows.push([
       "Beat",
       setup.audioMode === "silent" ? "None" : formatSetupValue(setup.audioMode),
@@ -605,12 +755,34 @@ function getTotalUnits(setup: ExerciseSetup) {
         ? setup.numberOfLetters
         : setup.numberOfWords
     case "eye-pong":
-      return 20
+      return setup.targetCount ?? EYE_PONG_TARGET_COUNT
     case "inhibition-challenge":
       return setup.trialCount
     case "motor-sequence-builder":
       return setup.sequenceCount
   }
+}
+
+function isExerciseSetupValid(setup: ExerciseSetup) {
+  if (
+    (setup.activity !== "letter-target" && setup.activity !== "letter-find") ||
+    setup.contentMode !== "words" ||
+    !setup.wordLength
+  ) {
+    return getTotalUnits(setup) > 0
+  }
+
+  const allowedLetters = new Set(
+    getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
+  )
+  return getWordsByLength(setup.wordLength, { availableOnly: true }).some(
+    (word) =>
+      setup.keyboardSide === "full" ||
+      word.key
+        .toUpperCase()
+        .split("")
+        .every((letter) => allowedLetters.has(letter))
+  )
 }
 
 function formatElapsedTime(seconds: number) {
@@ -833,6 +1005,8 @@ export function ExerciseControlPanel({
       return
     }
 
+    // Restoring a setup is an intentional one-time synchronization with session storage.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedExercise(rerunSetup.setup.activity)
     setSetup(rerunSetup.setup)
     setRun(null)
@@ -924,7 +1098,7 @@ export function ExerciseControlPanel({
   function startSession() {
     const totalUnits = getTotalUnits(setup)
 
-    if (totalUnits < 1) {
+    if (!isExerciseSetupValid(setup)) {
       return
     }
 
@@ -995,7 +1169,7 @@ export function ExerciseControlPanel({
   }
 
   const setupRows = getSetupRows(setup)
-  const isSetupValid = getTotalUnits(setup) > 0
+  const isSetupValid = isExerciseSetupValid(setup)
 
   return (
     <div className="flex flex-col gap-6">

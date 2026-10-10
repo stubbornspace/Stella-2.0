@@ -1,37 +1,37 @@
 import { useEffect } from "react"
 
 import { KeyboardKey } from "@/components/exercise-runtime/keyboard-key"
-import { LETTER_TO_KEY, type KeyState } from "@/lib/audio/constants"
-
-type KeyData = { id: number; letter?: string }
-
-const keyboard: KeyData[][] = [
-  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"].map((letter, index) => ({
-    id: index + 1,
-    letter,
-  })),
-  ["A", "S", "D", "F", "G", "H", "J", "K", "L", ""].map((letter, index) => ({
-    id: index + 11,
-    letter,
-  })),
-  ["", "Z", "X", "C", "V", "B", "N", "M", "", ""].map((letter, index) => ({
-    id: index + 21,
-    letter,
-  })),
-]
+import { type KeyState } from "@/lib/audio/constants"
+import {
+  getKeyboardRows,
+  getLetterToKeyMap,
+  keyIsOnSide,
+} from "@/lib/exercise-runtime/keyboard-map"
+import type {
+  KeyboardLayoutMode,
+  KeyboardSide,
+  KeyLabelMode,
+} from "@/types/exercise-control"
 
 export function KeyboardLayout({
   keyStates = {},
   onKeyClick,
   disabled = false,
   beatFlashIntervalMs,
+  keyboardLayout = "qwerty",
+  keyboardSide = "full",
+  keyLabels = "letters",
 }: {
   keyStates?: Record<number, KeyState>
   onKeyClick?: (id: number, inputTimeMs?: number) => void
   disabled?: boolean
   beatFlashIntervalMs?: number
+  keyboardLayout?: KeyboardLayoutMode
+  keyboardSide?: KeyboardSide
+  keyLabels?: KeyLabelMode
 }) {
   const getKeyState = (id: number) => keyStates[id] ?? "idle"
+  const keyboard = getKeyboardRows(keyboardLayout, keyboardSide)
 
   useEffect(() => {
     if (disabled || !onKeyClick) {
@@ -43,8 +43,8 @@ export function KeyboardLayout({
         return
       }
 
-      const keyId = LETTER_TO_KEY[event.key.toUpperCase()]
-      if (keyId == null) {
+      const keyId = getLetterToKeyMap(keyboardLayout)[event.key.toUpperCase()]
+      if (keyId == null || !keyIsOnSide(keyId, keyboardSide)) {
         return
       }
 
@@ -54,7 +54,7 @@ export function KeyboardLayout({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [disabled, onKeyClick])
+  }, [disabled, keyboardLayout, keyboardSide, onKeyClick])
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden bg-white p-2 sm:p-4">
@@ -76,6 +76,7 @@ export function KeyboardLayout({
                     beatFlashIntervalMs={beatFlashIntervalMs}
                     state={getKeyState(key.id)}
                     disabled={disabled}
+                    showLabel={keyLabels === "letters"}
                   />
                 ))}
               </div>

@@ -12,16 +12,12 @@ import {
 import { getPromptById } from "@/content/prompt-library"
 import {
   getAvailableWordLengths,
+  getWordsByLength,
   pickRandomWords,
   type WordEntry,
 } from "@/content/word-library"
 import { getRuntimePreloadUrls } from "@/content/audio-manifest"
-import {
-  LETTER_KEYS,
-  LETTER_TO_KEY,
-  KEY_TO_LETTER,
-  type KeyState,
-} from "@/lib/audio/constants"
+import { type KeyState } from "@/lib/audio/constants"
 import { preloadAudio, playAudio, unlockAudio } from "@/lib/audio/sound-manager"
 import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
 import {
@@ -42,6 +38,12 @@ import {
   getEyePongCompletionRate,
   getEyePongIntervalMs,
 } from "@/lib/exercise-runtime/eye-pong"
+import {
+  getKeyboardLetters,
+  getLetterKeys,
+  getLetterToKeyMap,
+  getKeyToLetterMap,
+} from "@/lib/exercise-runtime/keyboard-map"
 import { supportsKeyboardRuntime } from "@/config/exercise-control"
 import { exerciseDefinitions } from "@/config/exercises"
 import { cn } from "@/lib/utils"
@@ -51,6 +53,7 @@ import type {
   ExerciseRunResult,
   EyePongCueEvent,
   EyePongRunResult,
+  EyePongSetup,
   InhibitionChallengeRunResult,
   InhibitionChallengeSetup,
   KeyboardRuntimeExerciseType,
@@ -166,6 +169,8 @@ function buildLetterFindAudioConfig(
   selectedWords: WordEntry[],
   overrides?: Pick<AudioConfig, "hint" | "onCorrect">
 ): AudioConfig {
+  const keyToLetter = getKeyToLetterMap(setup.keyboardLayout)
+
   if (setup.contentMode === "letters") {
     const instructionPrompt =
       setup.audioMode === "silent"
@@ -176,7 +181,7 @@ function buildLetterFindAudioConfig(
       instruction: async (sequence) => {
         await playAudio(READY_TO_PLAY_PROMPT)
         await playAudio(instructionPrompt)
-        const firstLetter = KEY_TO_LETTER[sequence[0]!]
+        const firstLetter = keyToLetter[sequence[0]!]
         await playAudio(LETTER_FIND_HIT_LETTER_PROMPT)
         await playAudio(`/audio/letters/${firstLetter.toLowerCase()}.mp3`)
       },
@@ -243,20 +248,64 @@ function buildLetterFindAudioConfig(
   }
 }
 
-function buildRandomLetterSequence(count: number) {
+function buildRandomLetterSequence(
+  count: number,
+  setup: LetterTargetSetup | LetterFindSetup
+) {
+  const availableKeys = getLetterKeys(
+    setup.keyboardLayout,
+    setup.keyboardSide
+  ).map((key) => key.id)
+
   return Array.from(
     { length: count },
-    () => LETTER_KEYS[Math.floor(Math.random() * LETTER_KEYS.length)]!
+    () => availableKeys[Math.floor(Math.random() * availableKeys.length)]!
   )
 }
 
-function buildWordSequence(words: WordEntry[]) {
+function buildWordSequence(
+  words: WordEntry[],
+  setup: LetterTargetSetup | LetterFindSetup
+) {
+  const letterToKey = getLetterToKeyMap(setup.keyboardLayout)
   return words.flatMap((word) =>
     word.key
       .toUpperCase()
       .split("")
-      .map((letter) => LETTER_TO_KEY[letter]!)
+      .map((letter) => letterToKey[letter]!)
   )
+}
+
+function pickRandomWordsForSetup(setup: LetterTargetSetup | LetterFindSetup) {
+  const wordLength = setup.wordLength ?? getAvailableWordLengths()[0] ?? "3"
+
+  if (setup.keyboardSide === "full") {
+    return pickRandomWords(wordLength, setup.numberOfWords)
+  }
+
+  const allowedLetters = new Set(
+    getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
+  )
+  const pool = getWordsByLength(wordLength, { availableOnly: true }).filter(
+    (word) =>
+      word.key
+        .toUpperCase()
+        .split("")
+        .every((letter) => allowedLetters.has(letter))
+  )
+  const available = [...pool]
+  const selected: WordEntry[] = []
+
+  while (selected.length < setup.numberOfWords && available.length > 0) {
+    const index = Math.floor(Math.random() * available.length)
+    selected.push(available.splice(index, 1)[0]!)
+  }
+
+  while (selected.length < setup.numberOfWords && pool.length > 0) {
+    selected.push(pool[Math.floor(Math.random() * pool.length)]!)
+  }
+
+  return selected
 }
 
 function computeCompletedWords(stats: LetterStat[], words: WordEntry[]) {
@@ -299,7 +348,7 @@ function getTotalUnits(setup: ExerciseSetup) {
         ? setup.numberOfLetters
         : setup.numberOfWords
     case "eye-pong":
-      return EYE_PONG_TARGET_COUNT
+      return setup.targetCount ?? EYE_PONG_TARGET_COUNT
     case "inhibition-challenge":
       return setup.trialCount
     case "motor-sequence-builder":
@@ -322,6 +371,19 @@ function summarizeLetterStats(stats: LetterStat[]) {
           stats.reduce((sum, stat) => sum + stat.timeMs, 0) / stats.length
         )
       : 0
+  const sortedLatencies = stats
+    .map((stat) => stat.timeMs)
+    .sort((left, right) => left - right)
+  const middle = Math.floor(sortedLatencies.length / 2)
+  const medianLatencyMs =
+    sortedLatencies.length === 0
+      ? 0
+      : sortedLatencies.length % 2 === 0
+        ? Math.round(
+            (sortedLatencies[middle - 1]! + sortedLatencies[middle]!) / 2
+          )
+        : sortedLatencies[middle]!
+  const incorrectAttempts = Math.max(0, totalAttempts - stats.length)
 
   return {
     averageLatencyMs,
@@ -329,6 +391,12 @@ function summarizeLetterStats(stats: LetterStat[]) {
       stats.length > 0
         ? Math.round((firstAttemptHits / stats.length) * 100)
         : 0,
+    incorrectAttempts,
+    meanIncorrectAttempts:
+      stats.length > 0
+        ? Math.round((incorrectAttempts / stats.length) * 100) / 100
+        : 0,
+    medianLatencyMs,
     totalAttempts,
   }
 }
@@ -381,6 +449,13 @@ function FinishedRuntimeSession({
             value: `${Math.round(result.completionRatePercent)}%`,
           },
           { label: "Targets Presented", value: String(result.targetChanges) },
+          {
+            label: "Keyboard Layout",
+            value:
+              result.keyboardLayout === "alphabetical"
+                ? "Alphabetical"
+                : "QWERTY",
+          },
         ]
       : result.activity === "inhibition-challenge"
         ? (() => {
@@ -489,6 +564,21 @@ function FinishedRuntimeSession({
                 {
                   label: "Avg Latency",
                   value: `${metrics.averageLatencyMs} ms`,
+                },
+                {
+                  label: "Median Latency",
+                  value: `${metrics.medianLatencyMs} ms`,
+                },
+                {
+                  label: "Incorrect / Trial",
+                  value: String(metrics.meanIncorrectAttempts),
+                },
+                {
+                  label: "Keyboard Layout",
+                  value:
+                    result.keyboardLayout === "alphabetical"
+                      ? "Alphabetical"
+                      : "QWERTY",
                 },
                 {
                   label: "Beat",
@@ -619,6 +709,9 @@ function LetterTargetRuntime({
     audioMode: setup.audioMode,
     contentMode: setup.contentMode,
     elapsedSeconds: 0,
+    keyboardLayout: setup.keyboardLayout,
+    keyboardSide: setup.keyboardSide,
+    keyLabels: setup.keyLabels,
     selectedWords: selectedWords.map((word) => word.label),
     stats,
     wordLength: setup.wordLength,
@@ -634,6 +727,7 @@ function LetterTargetRuntime({
     beatSource: setup.audioMode,
     bpm: setup.tempoBpm ?? 54,
     musicPlaybackRate: setup.musicPlaybackRate,
+    keyboardLayout: setup.keyboardLayout,
     onComplete: (stats) => {
       onRunComplete(buildResult(stats), getCompletedUnits(stats))
     },
@@ -668,16 +762,10 @@ function LetterTargetRuntime({
     previousStartSignalRef.current = startSignal
     const sequence =
       setup.contentMode === "letters"
-        ? buildRandomLetterSequence(setup.numberOfLetters)
-        : buildWordSequence(selectedWords)
+        ? buildRandomLetterSequence(setup.numberOfLetters, setup)
+        : buildWordSequence(selectedWords, setup)
     void startGame(sequence)
-  }, [
-    selectedWords,
-    setup.contentMode,
-    setup.numberOfLetters,
-    startGame,
-    startSignal,
-  ])
+  }, [selectedWords, setup, startGame, startSignal])
 
   useEffect(() => () => stopGame(), [stopGame])
 
@@ -692,6 +780,9 @@ function LetterTargetRuntime({
       disabled={!isInputEnabled}
       keyStates={keyStates}
       onKeyClick={handleKeyClick}
+      keyboardLayout={setup.keyboardLayout}
+      keyboardSide={setup.keyboardSide}
+      keyLabels={setup.keyLabels}
       beatFlashIntervalMs={
         setup.audioMode === "silent"
           ? undefined
@@ -767,6 +858,9 @@ function LetterFindRuntime({
     audioMode: setup.audioMode,
     contentMode: setup.contentMode,
     elapsedSeconds: 0,
+    keyboardLayout: setup.keyboardLayout,
+    keyboardSide: setup.keyboardSide,
+    keyLabels: setup.keyLabels,
     selectedWords: selectedWords.map((word) => word.label),
     stats,
     wordLength: setup.wordLength,
@@ -782,6 +876,7 @@ function LetterFindRuntime({
     beatSource: setup.audioMode,
     bpm: setup.tempoBpm ?? 54,
     musicPlaybackRate: setup.musicPlaybackRate,
+    keyboardLayout: setup.keyboardLayout,
     onComplete: (stats) => {
       onRunComplete(buildResult(stats), getCompletedUnits(stats))
     },
@@ -817,16 +912,10 @@ function LetterFindRuntime({
     previousStartSignalRef.current = startSignal
     const sequence =
       setup.contentMode === "letters"
-        ? buildRandomLetterSequence(setup.numberOfLetters)
-        : buildWordSequence(selectedWords)
+        ? buildRandomLetterSequence(setup.numberOfLetters, setup)
+        : buildWordSequence(selectedWords, setup)
     void startGame(sequence)
-  }, [
-    selectedWords,
-    setup.contentMode,
-    setup.numberOfLetters,
-    startGame,
-    startSignal,
-  ])
+  }, [selectedWords, setup, startGame, startSignal])
 
   useEffect(() => () => stopGame(), [stopGame])
 
@@ -841,6 +930,9 @@ function LetterFindRuntime({
       disabled={!isInputEnabled}
       keyStates={keyStates}
       onKeyClick={handleKeyClick}
+      keyboardLayout={setup.keyboardLayout}
+      keyboardSide={setup.keyboardSide}
+      keyLabels="letters"
     />
   )
 }
@@ -855,12 +947,7 @@ function EyePongRuntime({
   onRunError,
 }: {
   active: boolean
-  setup: {
-    audioMode: ExerciseAudioMode
-    mode: "left-right" | "random"
-    tempoBpm?: number
-    musicPlaybackRate?: number
-  }
+  setup: EyePongSetup
   startSignal: number
   onPlayingChange: (isPlaying: boolean) => void
   onProgress: (result: EyePongRunResult, completedUnits: number) => void
@@ -880,7 +967,25 @@ function EyePongRuntime({
   const completionStartedRef = useRef(false)
   const stopBeatRef = useRef<() => void>(() => {})
 
-  const leftRightKeys = useMemo(() => [LETTER_TO_KEY.A, LETTER_TO_KEY.L], [])
+  const targetCount = setup.targetCount ?? EYE_PONG_TARGET_COUNT
+  const availableKeys = useMemo(
+    () => getLetterKeys(setup.keyboardLayout, setup.keyboardSide),
+    [setup.keyboardLayout, setup.keyboardSide]
+  )
+  const keyToLetter = useMemo(
+    () => getKeyToLetterMap(setup.keyboardLayout),
+    [setup.keyboardLayout]
+  )
+  const leftRightKeys = useMemo(() => {
+    const sorted = [...availableKeys].sort((left, right) => {
+      const leftColumn = (left.id - 1) % 10
+      const rightColumn = (right.id - 1) % 10
+      return leftColumn - rightColumn || left.id - right.id
+    })
+    return [sorted[0]?.id, sorted[sorted.length - 1]?.id].filter(
+      (keyId): keyId is number => typeof keyId === "number"
+    )
+  }, [availableKeys])
   const actualBpm = getEyePongActualBpm(
     setup.audioMode,
     setup.tempoBpm,
@@ -899,7 +1004,10 @@ function EyePongRuntime({
       activity: "eye-pong",
       actualBpm,
       audioMode: setup.audioMode,
-      completionRatePercent: getEyePongCompletionRate(cueEvents.length),
+      completionRatePercent: getEyePongCompletionRate(
+        cueEvents.length,
+        targetCount
+      ),
       cueEvents,
       elapsedSeconds:
         sessionStartedAtRef.current > 0
@@ -910,18 +1018,29 @@ function EyePongRuntime({
               )
             )
           : 0,
+      keyboardLayout: setup.keyboardLayout,
+      keyboardSide: setup.keyboardSide,
+      keyLabels: setup.keyLabels,
       mode: setup.mode,
-      targetCount: EYE_PONG_TARGET_COUNT,
+      targetCount,
       targetChanges: cueEvents.length,
     }
-  }, [actualBpm, setup.audioMode, setup.mode])
+  }, [
+    actualBpm,
+    setup.audioMode,
+    setup.keyboardLayout,
+    setup.keyboardSide,
+    setup.keyLabels,
+    setup.mode,
+    targetCount,
+  ])
 
   const handleBeat = useCallback(
     (scheduledTimeMs: number) => {
       if (
         !playingRef.current ||
         completionStartedRef.current ||
-        cueEventsRef.current.length >= EYE_PONG_TARGET_COUNT
+        cueEventsRef.current.length >= targetCount
       ) {
         return
       }
@@ -932,10 +1051,10 @@ function EyePongRuntime({
         keyId = leftRightKeys[indexRef.current % leftRightKeys.length]!
         indexRef.current += 1
       } else {
-        const availableKeys = LETTER_KEYS.filter(
-          (candidate) => candidate !== previousKeyRef.current
+        const randomKeys = availableKeys.filter(
+          (candidate) => candidate.id !== previousKeyRef.current
         )
-        keyId = availableKeys[Math.floor(Math.random() * availableKeys.length)]!
+        keyId = randomKeys[Math.floor(Math.random() * randomKeys.length)]!.id
       }
 
       previousKeyRef.current = keyId
@@ -943,7 +1062,7 @@ function EyePongRuntime({
       const cueEvent: EyePongCueEvent = {
         sequence: cueEventsRef.current.length + 1,
         keyId,
-        letter: KEY_TO_LETTER[keyId]!,
+        letter: keyToLetter[keyId]!,
         scheduledOffsetMs: Math.max(
           0,
           Math.round(scheduledTimeMs - sessionStartedAtRef.current)
@@ -969,7 +1088,7 @@ function EyePongRuntime({
       const result = buildResult()
       onProgress(result, cueEventsRef.current.length)
 
-      if (cueEventsRef.current.length === EYE_PONG_TARGET_COUNT) {
+      if (cueEventsRef.current.length === targetCount) {
         completionStartedRef.current = true
         playingRef.current = false
         stopBeatRef.current()
@@ -980,10 +1099,13 @@ function EyePongRuntime({
     },
     [
       buildResult,
+      availableKeys,
+      keyToLetter,
       leftRightKeys,
       onProgress,
       onRunComplete,
       setup.mode,
+      targetCount,
       targetHoldMs,
     ]
   )
@@ -1107,7 +1229,15 @@ function EyePongRuntime({
     void start()
   }, [active, onRunError, startBeat, startSignal, stopBeat, stopRuntime])
 
-  return <KeyboardLayout disabled keyStates={keyStates} />
+  return (
+    <KeyboardLayout
+      disabled
+      keyboardLayout={setup.keyboardLayout}
+      keyboardSide={setup.keyboardSide}
+      keyLabels={setup.keyLabels}
+      keyStates={keyStates}
+    />
+  )
 }
 
 export function KeyboardRuntimePage({
@@ -1153,10 +1283,7 @@ export function KeyboardRuntimePage({
       return []
     }
 
-    return pickRandomWords(
-      pendingRun.setup.wordLength ?? getAvailableWordLengths()[0] ?? "3",
-      pendingRun.setup.numberOfWords
-    )
+    return pickRandomWordsForSetup(pendingRun.setup)
   }, [pendingRun])
 
   useEffect(() => {
@@ -1385,8 +1512,11 @@ export function KeyboardRuntimePage({
           completionRatePercent: 0,
           cueEvents: [],
           elapsedSeconds,
+          keyboardLayout: pendingRun.setup.keyboardLayout,
+          keyboardSide: pendingRun.setup.keyboardSide,
+          keyLabels: pendingRun.setup.keyLabels,
           mode: pendingRun.setup.mode,
-          targetCount: EYE_PONG_TARGET_COUNT,
+          targetCount: pendingRun.setup.targetCount ?? EYE_PONG_TARGET_COUNT,
           targetChanges: completedUnits,
         }
       } else if (
@@ -1405,6 +1535,9 @@ export function KeyboardRuntimePage({
           audioMode: letterSetup.audioMode,
           contentMode: letterSetup.contentMode,
           elapsedSeconds,
+          keyboardLayout: letterSetup.keyboardLayout,
+          keyboardSide: letterSetup.keyboardSide,
+          keyLabels: letterSetup.keyLabels,
           selectedWords: [],
           stats: [],
           wordLength: letterSetup.wordLength,
@@ -1415,6 +1548,9 @@ export function KeyboardRuntimePage({
           activity: "inhibition-challenge",
           cueSpeedBpm: inhibitionSetup.cueSpeedBpm,
           elapsedSeconds,
+          keyboardLayout: inhibitionSetup.keyboardLayout,
+          keyboardSide: inhibitionSetup.keyboardSide,
+          keyLabels: inhibitionSetup.keyLabels,
           responseWindowMs: inhibitionSetup.responseWindowMs,
           rulePreset: inhibitionSetup.rulePreset,
           trialCount: inhibitionSetup.trialCount,
@@ -1427,6 +1563,9 @@ export function KeyboardRuntimePage({
           audioMode: motorSetup.audioMode,
           contentType: motorSetup.contentType,
           elapsedSeconds,
+          keyboardLayout: motorSetup.keyboardLayout,
+          keyboardSide: motorSetup.keyboardSide,
+          keyLabels: motorSetup.keyLabels,
           presentationSpeedBpm: motorSetup.presentationSpeedBpm,
           sequenceCount: motorSetup.sequenceCount,
           sequenceLength: motorSetup.sequenceLength,

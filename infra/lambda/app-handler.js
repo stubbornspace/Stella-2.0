@@ -151,7 +151,85 @@ function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-function computeLetterMetrics(stats) {
+const keyboardLayouts = {
+  qwerty: [
+    "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+    "A", "S", "D", "F", "G", "H", "J", "K", "L", "",
+    "", "Z", "X", "C", "V", "B", "N", "M", "", "",
+  ],
+  alphabetical: [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+    "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+    "", "", "U", "V", "W", "X", "Y", "Z", "", "",
+  ],
+};
+
+function mean(values) {
+  return values.length
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : 0;
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function percentile(values, percentileValue) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const index = (sorted.length - 1) * percentileValue;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  return lower === upper
+    ? sorted[lower]
+    : sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+}
+
+function standardDeviation(values) {
+  if (!values.length) return 0;
+  const average = mean(values);
+  return Math.sqrt(
+    values.reduce((sum, value) => sum + (value - average) ** 2, 0) /
+      values.length,
+  );
+}
+
+function timestampDifference(start, end) {
+  if (!start || !end) return undefined;
+  const difference = new Date(end).getTime() - new Date(start).getTime();
+  return Number.isFinite(difference) ? Math.max(0, difference) : undefined;
+}
+
+function letterToKeyMap(layout) {
+  return Object.fromEntries(
+    (keyboardLayouts[layout] ?? keyboardLayouts.qwerty)
+      .map((letter, index) => [letter, index + 1])
+      .filter(([letter]) => Boolean(letter)),
+  );
+}
+
+function keyMissMetrics(targetKeyId, pressedKeyId) {
+  const targetColumn = (targetKeyId - 1) % 10;
+  const targetRow = Math.floor((targetKeyId - 1) / 10);
+  const pressedColumn = (pressedKeyId - 1) % 10;
+  const pressedRow = Math.floor((pressedKeyId - 1) / 10);
+  const columnDelta = pressedColumn - targetColumn;
+  const rowDelta = pressedRow - targetRow;
+  return {
+    direction:
+      Math.abs(columnDelta) >= Math.abs(rowDelta)
+        ? columnDelta < 0 ? "left" : "right"
+        : rowDelta < 0 ? "above" : "below",
+    distance: Math.sqrt(columnDelta ** 2 + rowDelta ** 2),
+  };
+}
+
+function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = []) {
   const totalAttempts = stats.reduce((sum, stat) => sum + stat.attempts, 0);
   const incorrectAttempts = stats.reduce(
     (sum, stat) => sum + Math.max(0, stat.attempts - 1),
@@ -165,38 +243,136 @@ function computeLetterMetrics(stats) {
             100
         )
       : 0;
-  const meanCorrectLatencyMs =
-    correctHits > 0
-      ? round(
-          stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits
-        )
-      : 0;
-  const mean =
-    correctHits > 0
-      ? stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits
-      : 0;
-  const latencyVariabilityStdDev =
-    correctHits > 0
-      ? round(
-          Math.sqrt(
-            stats.reduce((sum, stat) => sum + (stat.timeMs - mean) ** 2, 0) /
-              correctHits
-          )
-        )
-      : 0;
+  const correctLatencies = stats.map((stat) => stat.timeMs);
+  const letterToKey = letterToKeyMap(keyboardLayout);
+  const attemptLatencies = [];
+  const firstResponseLatencies = [];
+  const missDistances = [];
+  const errorDirectionCounts = {};
+
+  for (const stat of stats) {
+    const attempts = stat.attemptEvents ?? [];
+    const firstLatency = timestampDifference(stat.targetStartedAt, attempts[0]?.timestamp);
+    if (firstLatency != null) firstResponseLatencies.push(firstLatency);
+    for (const attempt of attempts) {
+      const latency = timestampDifference(stat.targetStartedAt, attempt.timestamp);
+      if (latency != null) attemptLatencies.push(latency);
+      if (attempt.correct) continue;
+      const targetKeyId = letterToKey[stat.letter];
+      const pressedKeyId = attempt.keyId ?? letterToKey[attempt.pressedLetter];
+      if (targetKeyId == null || pressedKeyId == null) continue;
+      const miss = keyMissMetrics(targetKeyId, pressedKeyId);
+      missDistances.push(miss.distance);
+      errorDirectionCounts[miss.direction] =
+        (errorDirectionCounts[miss.direction] ?? 0) + 1;
+    }
+  }
+
+  const byKey = [...new Set(stats.map((stat) => stat.letter))]
+    .sort()
+    .map((letter) => {
+      const letterStats = stats.filter((stat) => stat.letter === letter);
+      return {
+        beat: audioMode,
+        firstAttemptAccuracyPercent: round(
+          letterStats.filter((stat) => stat.attempts === 1).length /
+            letterStats.length * 100,
+        ),
+        incorrectAttempts: letterStats.reduce(
+          (sum, stat) => sum + Math.max(0, stat.attempts - 1), 0,
+        ),
+        keyId: letterToKey[letter],
+        letter,
+        meanCorrectLatencyMs: round(mean(letterStats.map((stat) => stat.timeMs))),
+        trials: letterStats.length,
+      };
+    });
+
+  let statOffset = 0;
+  const byWord = selectedWords.flatMap((word) => {
+    const wordStats = stats.slice(statOffset, statOffset + word.length);
+    statOffset += word.length;
+    if (wordStats.length !== word.length) return [];
+    const completedTimes = wordStats
+      .map((stat) => stat.completedAt && new Date(stat.completedAt).getTime())
+      .filter((value) => typeof value === "number");
+    const intervals = completedTimes
+      .slice(1)
+      .map((value, index) => value - completedTimes[index]);
+    return [{
+      beat: audioMode,
+      completionTimeMs: timestampDifference(
+        wordStats[0]?.targetStartedAt,
+        wordStats[wordStats.length - 1]?.completedAt,
+      ),
+      firstAttemptAccuracyPercent: round(
+        wordStats.filter((stat) => stat.attempts === 1).length /
+          wordStats.length * 100,
+      ),
+      interKeyIntervalMs: intervals.length ? round(mean(intervals)) : undefined,
+      length: word.length,
+      trials: wordStats.length,
+      word,
+    }];
+  });
+
+  let sequenceOffset = 0;
+  const breakdownPointCounts = {};
+  const sequencePerformance = selectedWords.map((word, index) => {
+    const wordStats = stats.slice(sequenceOffset, sequenceOffset + word.length);
+    sequenceOffset += word.length;
+    const firstErrorPosition = wordStats.findIndex((stat) => stat.attempts > 1);
+    if (firstErrorPosition >= 0) {
+      const position = firstErrorPosition + 1;
+      breakdownPointCounts[position] = (breakdownPointCounts[position] ?? 0) + 1;
+    }
+    return { item: index + 1, lettersCompleted: wordStats.length, lettersInItem: word.length };
+  });
+  const dominantDirection = Object.entries(errorDirectionCounts)
+    .sort((left, right) => right[1] - left[1])[0];
+  const dominantBreakdown = Object.entries(breakdownPointCounts)
+    .sort((left, right) => right[1] - left[1])[0];
 
   return {
+    byKey,
+    byWord,
     correctHits,
+    directionalConsistencyPercent: dominantDirection
+      ? round(dominantDirection[1] / incorrectAttempts * 100)
+      : undefined,
+    dominantErrorDirection: dominantDirection?.[0],
+    errorDirectionCounts,
     firstAttemptSuccessRatePercent,
     incorrectAttempts,
-    latencyVariabilityStdDev,
-    meanCorrectLatencyMs,
+    latencyIqrMs: correctLatencies.length > 3
+      ? round(percentile(correctLatencies, 0.75) - percentile(correctLatencies, 0.25))
+      : undefined,
+    latencyVariabilityStdDev: round(standardDeviation(correctLatencies)),
+    meanCorrectLatencyMs: round(mean(correctLatencies)),
+    meanFirstResponseLatencyMs: round(mean(firstResponseLatencies)),
+    meanIncorrectAttemptsPerTrial: correctHits
+      ? round(incorrectAttempts / correctHits, 2)
+      : 0,
+    meanMissDistance: missDistances.length ? round(mean(missDistances), 2) : undefined,
+    meanResponseLatencyMs: round(mean(attemptLatencies)),
+    medianCorrectLatencyMs: round(median(correctLatencies)),
+    mostCommonBreakdownPosition: dominantBreakdown
+      ? Number(dominantBreakdown[0])
+      : undefined,
+    responseLatencyStdDev: round(standardDeviation(attemptLatencies)),
+    sequenceCompletionRatePercent: sequencePerformance.length
+      ? round(sequencePerformance.filter(
+          (item) => item.lettersCompleted === item.lettersInItem,
+        ).length / sequencePerformance.length * 100)
+      : undefined,
+    sequencePerformance,
     totalAttempts,
   };
 }
 
 function computeBeatMetrics(stats, actualBpm) {
-  const timedStats = stats.filter(
+  const attempts = stats.flatMap((stat) => stat.attemptEvents ?? []);
+  const timedStats = (attempts.length ? attempts : stats).filter(
     (stat) => typeof stat.beatOffsetMs === "number",
   );
   const offsets = timedStats.map((stat) => stat.beatOffsetMs);
@@ -281,6 +457,12 @@ function buildSessionFromResult({
     totalSessionDurationMinutes: durationMinutes,
     pauseBreakCount: 0,
     rawEventPayload: result,
+    keyboardLayout: result.keyboardLayout ?? setup.keyboardLayout ?? "qwerty",
+    keyboardSide: result.keyboardSide ?? setup.keyboardSide ?? "full",
+    keyLabels:
+      result.activity === "letter-find"
+        ? "letters"
+        : (result.keyLabels ?? setup.keyLabels ?? "letters"),
   };
 
   if (result.activity === "eye-pong" && setup.activity === "eye-pong") {
@@ -293,6 +475,7 @@ function buildSessionFromResult({
       musicPlaybackRate:
         result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
       pattern: result.mode === "left-right" ? "horizontal" : "mixed",
+      targetCount: result.targetCount ?? setup.targetCount ?? 20,
       targetChanges: result.targetChanges,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
     };
@@ -422,7 +605,12 @@ function buildSessionFromResult({
   const itemsTotal =
     setup.contentMode === "letters" ? setup.numberOfLetters : setup.numberOfWords;
   const itemsCompleted = Math.min(completedUnits, itemsTotal);
-  const metrics = computeLetterMetrics(result.stats ?? []);
+  const metrics = computeLetterMetrics(
+    result.stats ?? [],
+    result.keyboardLayout ?? setup.keyboardLayout ?? "qwerty",
+    result.audioMode,
+    result.selectedWords ?? [],
+  );
   const accuracyPercent =
     metrics.totalAttempts === 0
       ? 0
@@ -430,6 +618,12 @@ function buildSessionFromResult({
   const attemptsPerMinute =
     durationMinutes > 0 ? round(metrics.totalAttempts / durationMinutes, 1) : 0;
   const beatMetrics = computeBeatMetrics(result.stats ?? [], result.actualBpm);
+  const simulatorMetrics = {
+    ...metrics,
+    eventualAccuracyPercent: metrics.correctHits > 0 ? 100 : 0,
+    itemCompletionRatePercent:
+      itemsTotal > 0 ? round(itemsCompleted / itemsTotal * 100) : 0,
+  };
 
   if (result.activity === "letter-target" && setup.activity === "letter-target") {
     return {
@@ -438,22 +632,16 @@ function buildSessionFromResult({
       accuracyPercent,
       attemptsPerMinute,
       audioMode: result.audioMode,
+      ...simulatorMetrics,
       contentMode: result.contentMode,
-      correctHits: metrics.correctHits,
-      directionalConsistencyPercent: undefined,
-      firstAttemptSuccessRatePercent: metrics.firstAttemptSuccessRatePercent,
-      incorrectAttempts: metrics.incorrectAttempts,
       itemsCompleted,
       itemsPerSession: itemsTotal,
       itemsTotal,
-      latencyVariabilityStdDev: metrics.latencyVariabilityStdDev,
-      meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
       musicPlaybackRate:
         result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
       onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
       timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
-      totalAttempts: metrics.totalAttempts,
       wordLength: result.contentMode === "words" ? result.wordLength : undefined,
     };
   }
@@ -465,18 +653,14 @@ function buildSessionFromResult({
       accuracyPercent,
       attemptsPerMinute,
       audioMode: result.audioMode,
+      ...simulatorMetrics,
       contentMode: result.contentMode,
-      correctHits: metrics.correctHits,
-      firstAttemptSuccessRatePercent: metrics.firstAttemptSuccessRatePercent,
-      incorrectAttempts: metrics.incorrectAttempts,
       itemsCompleted,
       itemsPerSession: itemsTotal,
       itemsTotal,
-      meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
       musicPlaybackRate:
         result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
-      totalAttempts: metrics.totalAttempts,
       wordLength: result.contentMode === "words" ? result.wordLength : undefined,
     };
   }
@@ -524,6 +708,12 @@ function buildSessionFromRun({
     totalSessionDurationMinutes: durationMinutes,
     pauseBreakCount: 0,
     rawEventPayload: null,
+    keyboardLayout: setup.keyboardLayout ?? "qwerty",
+    keyboardSide: setup.keyboardSide ?? "full",
+    keyLabels:
+      setup.activity === "letter-find"
+        ? "letters"
+        : (setup.keyLabels ?? "letters"),
   };
 
   let session;
@@ -602,8 +792,13 @@ function buildSessionFromRun({
       activity: "eye-pong",
       mode: setup.mode,
       pattern: setup.mode === "left-right" ? "horizontal" : "mixed",
+      targetCount: setup.targetCount ?? 20,
       targetChanges: completedUnits,
-      completionRatePercent: clamp((completedUnits / 20) * 100, 0, 100),
+      completionRatePercent: clamp(
+        (completedUnits / (setup.targetCount ?? 20)) * 100,
+        0,
+        100,
+      ),
       audioMode: setup.audioMode,
       tempoBpm: setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
       musicPlaybackRate:

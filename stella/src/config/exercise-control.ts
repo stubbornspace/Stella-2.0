@@ -51,6 +51,9 @@ const defaultWordLength = getAvailableWordLengths()[0] ?? "3"
 
 const defaultLetterTargetSetup: LetterTargetSetup = {
   activity: "letter-target",
+  keyboardLayout: "qwerty",
+  keyboardSide: "full",
+  keyLabels: "letters",
   contentMode: "letters",
   numberOfLetters: 3,
   numberOfWords: 3,
@@ -62,6 +65,9 @@ const defaultLetterTargetSetup: LetterTargetSetup = {
 
 const defaultLetterFindSetup: LetterFindSetup = {
   activity: "letter-find",
+  keyboardLayout: "qwerty",
+  keyboardSide: "full",
+  keyLabels: "letters",
   contentMode: "letters",
   numberOfLetters: 3,
   numberOfWords: 3,
@@ -73,7 +79,11 @@ const defaultLetterFindSetup: LetterFindSetup = {
 
 const defaultEyePongSetup: EyePongSetup = {
   activity: "eye-pong",
+  keyboardLayout: "qwerty",
+  keyboardSide: "full",
+  keyLabels: "letters",
   mode: "left-right",
+  targetCount: 4,
   audioMode: "metronome",
   tempoBpm: 54,
   musicPlaybackRate: 1,
@@ -81,6 +91,9 @@ const defaultEyePongSetup: EyePongSetup = {
 
 const defaultInhibitionChallengeSetup: InhibitionChallengeSetup = {
   activity: "inhibition-challenge",
+  keyboardLayout: "qwerty",
+  keyboardSide: "full",
+  keyLabels: "letters",
   trialCount: 12,
   rulePreset: "balanced",
   responseWindowMs: 1200,
@@ -89,6 +102,9 @@ const defaultInhibitionChallengeSetup: InhibitionChallengeSetup = {
 
 const defaultMotorSequenceBuilderSetup: MotorSequenceBuilderSetup = {
   activity: "motor-sequence-builder",
+  keyboardLayout: "qwerty",
+  keyboardSide: "full",
+  keyLabels: "letters",
   contentType: "letter-sequence",
   sequenceLength: 3,
   sequenceCount: 5,
@@ -116,6 +132,19 @@ export function getDefaultExerciseSetup(
   activity: RunnableExerciseType
 ): ExerciseSetup {
   return { ...defaultSetups[activity] }
+}
+
+export function normalizeExerciseSetup(setup: ExerciseSetup): ExerciseSetup {
+  const normalized = {
+    ...getDefaultExerciseSetup(setup.activity),
+    ...setup,
+  } as ExerciseSetup
+
+  if (normalized.activity === "letter-find") {
+    return { ...normalized, keyLabels: "letters" }
+  }
+
+  return normalized
 }
 
 export function isRunnableExercise(

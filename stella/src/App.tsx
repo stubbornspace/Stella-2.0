@@ -487,7 +487,8 @@ function AddPatientDialog({
         <div>
           <h2 className="text-xl font-semibold">Add Patient</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a POC patient record. Patient ID will be assigned automatically.
+            Create a POC patient record. Patient ID will be assigned
+            automatically.
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -699,11 +700,7 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
   )
 }
 
-function PatientSummaryPage({
-  onToast: _onToast,
-}: {
-  onToast: (message: string) => void
-}) {
+function PatientSummaryPage() {
   const navigate = useNavigate()
   const { patientId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -807,9 +804,7 @@ function PatientSummaryPage({
     ? `${patient.firstName} ${patient.lastName}`
     : "Patient"
   const activeTab: PatientDetailTab =
-    searchParams.get("tab") === "analysis"
-        ? "analysis"
-        : "dashboard"
+    searchParams.get("tab") === "analysis" ? "analysis" : "dashboard"
   const patientSummaryDescription = patient
     ? `${sessions.length} sessions • Last session ${formatDate(lastSession?.sessionDate)} • Patient ID ${patient.patientCode}`
     : "Loading patient activity."
@@ -831,7 +826,10 @@ function PatientSummaryPage({
       <PageHeader
         action={
           patientId ? (
-            <Button onClick={() => navigate(`/patients/${patientId}/exercises`)} type="button">
+            <Button
+              onClick={() => navigate(`/patients/${patientId}/exercises`)}
+              type="button"
+            >
               <Play data-icon="inline-start" />
               Run Exercise
             </Button>
@@ -913,7 +911,11 @@ function ExerciseSetupPage({
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-8 py-8">
       <PageHeader
         backAction={
-          <Button onClick={() => navigate(`/patients/${patientId}`)} type="button" variant="ghost">
+          <Button
+            onClick={() => navigate(`/patients/${patientId}`)}
+            type="button"
+            variant="ghost"
+          >
             <ArrowLeft data-icon="inline-start" />
             Back to patient
           </Button>
@@ -1149,6 +1151,22 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   const configRows: Array<[string, unknown]> = []
   const resultRows: Array<[string, unknown, string?]> = []
 
+  if (session.keyboardLayout) {
+    configRows.push([
+      "Keyboard Layout",
+      session.keyboardLayout === "alphabetical" ? "Alphabetical" : "QWERTY",
+    ])
+  }
+  if (session.keyboardSide) {
+    configRows.push(["Keyboard Side", displayText(session.keyboardSide)])
+  }
+  if (session.keyLabels) {
+    configRows.push([
+      "Key Labels",
+      session.keyLabels === "blank" ? "Blank" : "Show letters",
+    ])
+  }
+
   if ("contentMode" in session) {
     configRows.push(["Content", displayText(session.contentMode)])
   }
@@ -1175,6 +1193,9 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   }
   if ("mode" in session && session.mode) {
     configRows.push(["Target Order", displayText(session.mode)])
+  }
+  if ("targetCount" in session && session.targetCount) {
+    configRows.push(["Target Changes", session.targetCount])
   }
   if ("pattern" in session) {
     configRows.push(["Pattern", displayText(session.pattern)])
@@ -1208,6 +1229,65 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   if ("totalAttempts" in session) {
     resultRows.push(["Total Attempts", session.totalAttempts])
     resultRows.push(["Correct Hits", session.correctHits])
+    resultRows.push(["Accuracy", session.accuracyPercent, "percent"])
+    resultRows.push([
+      "First-Attempt Accuracy",
+      session.firstAttemptSuccessRatePercent,
+      "percent",
+    ])
+    resultRows.push([
+      "Eventual Accuracy",
+      session.eventualAccuracyPercent,
+      "percent",
+    ])
+    resultRows.push([
+      "Item Completion",
+      session.itemCompletionRatePercent,
+      "percent",
+    ])
+    resultRows.push([
+      "Mean Correct Latency",
+      session.meanCorrectLatencyMs,
+      "milliseconds",
+    ])
+    resultRows.push([
+      "Median Correct Latency",
+      session.medianCorrectLatencyMs,
+      "milliseconds",
+    ])
+    resultRows.push([
+      "Mean First-Response Latency",
+      session.meanFirstResponseLatencyMs,
+      "milliseconds",
+    ])
+    resultRows.push([
+      "Response Latency SD",
+      session.responseLatencyStdDev,
+      "milliseconds",
+    ])
+    resultRows.push(["Latency IQR", session.latencyIqrMs, "milliseconds"])
+    resultRows.push([
+      "Mean Incorrect Attempts / Trial",
+      session.meanIncorrectAttemptsPerTrial,
+      "decimal",
+    ])
+    resultRows.push(["Mean Miss Distance", session.meanMissDistance, "decimal"])
+    if (session.dominantErrorDirection) {
+      resultRows.push([
+        "Dominant Error Direction",
+        displayText(session.dominantErrorDirection),
+      ])
+    }
+    resultRows.push([
+      "Sequence Completion",
+      session.sequenceCompletionRatePercent,
+      "percent",
+    ])
+    resultRows.push([
+      "Most Common Breakdown Position",
+      session.mostCommonBreakdownPosition,
+      "count",
+    ])
   }
   if ("targetChanges" in session) {
     resultRows.push(["Targets Presented", session.targetChanges, "count"])
@@ -1227,7 +1307,7 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
       "milliseconds",
     ])
   }
-  if ("sequenceCompletionRatePercent" in session) {
+  if ("contentType" in session) {
     resultRows.push([
       "Sequence Completion",
       session.sequenceCompletionRatePercent,
@@ -1290,52 +1370,136 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
     "duration",
   ])
 
+  const byKey = "byKey" in session ? session.byKey : undefined
+  const byWord = "byWord" in session ? session.byWord : undefined
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="overflow-hidden rounded-md border bg-background">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/60">
-            <tr>
-              <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
-                Configuration
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {configRows.map(([label, value]) => (
-              <tr className="border-t" key={label}>
-                <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
-                  {label}
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="overflow-hidden rounded-md border bg-background">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-muted/60">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
+                  Configuration
                 </th>
-                <td className="px-3 py-2.5 font-medium">{String(value)}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="overflow-hidden rounded-md border bg-background">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/60">
-            <tr>
-              <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
-                Additional Results
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {resultRows.map(([label, value, valueFormat]) => (
-              <tr className="border-t" key={label}>
-                <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
-                  {label}
+            </thead>
+            <tbody>
+              {configRows.map(([label, value]) => (
+                <tr className="border-t" key={label}>
+                  <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
+                    {label}
+                  </th>
+                  <td className="px-3 py-2.5 font-medium">{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="overflow-hidden rounded-md border bg-background">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-muted/60">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
+                  Additional Results
                 </th>
-                <td className="px-3 py-2.5 font-medium">
-                  {formatMetricValue(value, valueFormat)}
-                </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {resultRows.map(([label, value, valueFormat]) => (
+                <tr className="border-t" key={label}>
+                  <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
+                    {label}
+                  </th>
+                  <td className="px-3 py-2.5 font-medium">
+                    {formatMetricValue(value, valueFormat)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+      {byKey?.length ? (
+        <div className="overflow-x-auto rounded-md border bg-background">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-muted/60">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium">Letter</th>
+                <th className="px-3 py-2.5 text-left font-medium">Trials</th>
+                <th className="px-3 py-2.5 text-left font-medium">
+                  First Attempt
+                </th>
+                <th className="px-3 py-2.5 text-left font-medium">
+                  Mean Latency
+                </th>
+                <th className="px-3 py-2.5 text-left font-medium">Incorrect</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byKey.map((row) => (
+                <tr className="border-t" key={`${row.keyId}-${row.letter}`}>
+                  <td className="px-3 py-2.5 font-medium">{row.letter}</td>
+                  <td className="px-3 py-2.5">{row.trials}</td>
+                  <td className="px-3 py-2.5">
+                    {formatMetricValue(
+                      row.firstAttemptAccuracyPercent,
+                      "percent"
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {formatMetricValue(
+                      row.meanCorrectLatencyMs,
+                      "milliseconds"
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">{row.incorrectAttempts}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {byWord?.length ? (
+        <div className="overflow-x-auto rounded-md border bg-background">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-muted/60">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium">Word</th>
+                <th className="px-3 py-2.5 text-left font-medium">Length</th>
+                <th className="px-3 py-2.5 text-left font-medium">
+                  First Attempt
+                </th>
+                <th className="px-3 py-2.5 text-left font-medium">
+                  Completion Time
+                </th>
+                <th className="px-3 py-2.5 text-left font-medium">Inter-Key</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byWord.map((row) => (
+                <tr className="border-t" key={row.word}>
+                  <td className="px-3 py-2.5 font-medium">{row.word}</td>
+                  <td className="px-3 py-2.5">{row.length}</td>
+                  <td className="px-3 py-2.5">
+                    {formatMetricValue(
+                      row.firstAttemptAccuracyPercent,
+                      "percent"
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {formatMetricValue(row.completionTimeMs, "milliseconds")}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {formatMetricValue(row.interKeyIntervalMs, "milliseconds")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1708,8 +1872,7 @@ function HeaderBreadcrumbs() {
     ? `${patient.firstName} ${patient.lastName}`
     : "Patient"
   const exerciseType = (exerciseMatch?.params.exerciseType ??
-    runtimeMatch?.params.exerciseType) as
-    ExerciseType | undefined
+    runtimeMatch?.params.exerciseType) as ExerciseType | undefined
   const exerciseDefinition =
     exerciseType && exerciseTypes.includes(exerciseType)
       ? exerciseDefinitions[exerciseType]
@@ -1764,7 +1927,11 @@ function AppShell({
       <header className="border-b border-[#2a4568] bg-[#0b1b2f] text-[#c6a632]">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-8">
           <Link className="flex min-w-0 items-center gap-3" to="/">
-            <img alt="Stella logo" className="h-9 w-9 shrink-0 object-contain" src="/logo.png" />
+            <img
+              alt="Stella logo"
+              className="h-9 w-9 shrink-0 object-contain"
+              src="/logo.png"
+            />
             <span className="font-heading text-xl font-bold">Stella</span>
           </Link>
           <HeaderBreadcrumbs />
@@ -1795,7 +1962,7 @@ function AppShell({
                     <div className="mt-2 text-sm font-medium">
                       {mode === "local"
                         ? "Local preview"
-                        : user?.email ?? user?.displayName ?? "Signed in"}
+                        : (user?.email ?? user?.displayName ?? "Signed in")}
                     </div>
                     {isAuthEnabled ? (
                       <Button
@@ -1876,10 +2043,7 @@ export function App() {
     <AppShell onToast={showToast} toast={toast}>
       <Routes>
         <Route element={<PatientListPage onToast={showToast} />} path="/" />
-        <Route
-          element={<PatientSummaryPage onToast={showToast} />}
-          path="/patients/:patientId"
-        />
+        <Route element={<PatientSummaryPage />} path="/patients/:patientId" />
         <Route
           element={<ExerciseSetupPage onToast={showToast} />}
           path="/patients/:patientId/exercises"

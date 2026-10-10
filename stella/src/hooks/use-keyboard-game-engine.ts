@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type {
   ExerciseAudioMode,
+  KeyboardLayoutMode,
   LetterRuntimeStat,
 } from "@/types/exercise-control"
-import { KEY_TO_LETTER, type KeyState } from "@/lib/audio/constants"
+import { type KeyState } from "@/lib/audio/constants"
 import { playAudio, preloadAudio, unlockAudio } from "@/lib/audio/sound-manager"
 import { useMetronome } from "@/hooks/use-metronome"
 import { useMusic } from "@/hooks/use-music"
+import { getKeyToLetterMap } from "@/lib/exercise-runtime/keyboard-map"
 
 export type LetterStat = LetterRuntimeStat
 
@@ -34,6 +36,7 @@ interface KeyboardGameEngineConfig {
   onComplete: (stats: LetterStat[]) => void
   onStatsChange?: (stats: LetterStat[]) => void
   musicPlaybackRate?: number
+  keyboardLayout?: KeyboardLayoutMode
 }
 
 type AttemptEvent = NonNullable<LetterStat["attemptEvents"]>[number]
@@ -51,6 +54,7 @@ export function useKeyboardGameEngine({
   onComplete,
   onStatsChange,
   musicPlaybackRate = 1,
+  keyboardLayout = "qwerty",
 }: KeyboardGameEngineConfig) {
   const [keyStates, setKeyStates] = useState<Record<number, KeyState>>({})
   const [letterStats, setLetterStats] = useState<LetterStat[]>([])
@@ -78,6 +82,10 @@ export function useKeyboardGameEngine({
   const beatSourceRef = useRef(beatSource)
   const showTargetRef = useRef(showTarget)
   const runVersionRef = useRef(0)
+  const keyToLetter = useMemo(
+    () => getKeyToLetterMap(keyboardLayout),
+    [keyboardLayout]
+  )
 
   useEffect(() => {
     onCompleteRef.current = onComplete
@@ -202,7 +210,7 @@ export function useKeyboardGameEngine({
       audioPlayingRef.current = true
       setBeatMuted(true)
       const { hint } = audioRef.current
-      const letter = KEY_TO_LETTER[targetKey]
+      const letter = keyToLetter[targetKey]
 
       if (typeof hint === "function") {
         await hint(letter, statsRef.current.length)
@@ -227,7 +235,7 @@ export function useKeyboardGameEngine({
       }
       startHintTimerRef.current()
     }, 10000)
-  }, [setBeatMuted, startBeat])
+  }, [keyToLetter, setBeatMuted, startBeat])
 
   useEffect(() => {
     startHintTimerRef.current = startHintTimer
@@ -303,7 +311,10 @@ export function useKeyboardGameEngine({
       }
 
       const targetKey = sequenceRef.current[indexRef.current]
-      const pressedLetter = KEY_TO_LETTER[id]
+      const pressedLetter = keyToLetter[id]
+      if (!pressedLetter) {
+        return
+      }
       const now = inputTimeMs
       const nearestBeat =
         beatSourceRef.current === "music"
@@ -319,6 +330,7 @@ export function useKeyboardGameEngine({
         beatOffsetMs,
         beatOffsetBasis: nearestBeat ? "nearest-beat" : undefined,
         correct: id === targetKey,
+        keyId: id,
         pressedLetter,
         timestamp: scheduledWallClockTimestamp(inputTimeMs),
       }
@@ -359,14 +371,14 @@ export function useKeyboardGameEngine({
       setBeatMuted(true)
 
       const currentIndex = indexRef.current
-      const letter = KEY_TO_LETTER[id]
+      const letter = keyToLetter[id]
       const timeMs =
         letterStartRef.current > 0
           ? Math.max(0, Math.round(now - letterStartRef.current))
           : 0
       const isLast = currentIndex >= sequenceRef.current.length - 1
       const nextKey = sequenceRef.current[currentIndex + 1]
-      const nextLetter = nextKey != null ? KEY_TO_LETTER[nextKey] : null
+      const nextLetter = nextKey != null ? keyToLetter[nextKey] : null
 
       setKeyStates({ [id]: "correct" })
 
@@ -435,6 +447,7 @@ export function useKeyboardGameEngine({
     [
       getNearestMetronomeBeat,
       getNearestMusicBeat,
+      keyToLetter,
       setBeatMuted,
       startBeat,
       startHintTimer,

@@ -60,11 +60,23 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     tableColumns: [
+      { key: "keyboardLayout", label: "Layout", format: "text" },
+      { key: "keyboardSide", label: "Side", format: "text" },
       { key: "contentMode", label: "Mode", format: "text" },
       { key: "audioMode", label: "Audio", format: "text" },
       { key: "itemsPerSession", label: "Items", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
+      {
+        key: "itemCompletionRatePercent",
+        label: "Item Completion",
+        format: "percent",
+      },
+      {
+        key: "eventualAccuracyPercent",
+        label: "Eventual Accuracy",
+        format: "percent",
+      },
       {
         key: "firstAttemptSuccessRatePercent",
         label: "First Attempt",
@@ -73,6 +85,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       {
         key: "meanCorrectLatencyMs",
         label: "Avg Latency",
+        format: "milliseconds",
+      },
+      {
+        key: "medianCorrectLatencyMs",
+        label: "Median Latency",
         format: "milliseconds",
       },
       { key: "incorrectAttempts", label: "Errors", format: "count" },
@@ -88,6 +105,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     configurationFilters: [
+      { key: "keyboardLayout", label: "Keyboard Layout" },
+      { key: "keyboardSide", label: "Keyboard Side" },
+      { key: "keyLabels", label: "Key Labels" },
       { key: "contentMode", label: "Mode" },
       { key: "wordLength", label: "Word Length" },
       { key: "audioMode", label: "Beat" },
@@ -152,11 +172,23 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     tableColumns: [
+      { key: "keyboardLayout", label: "Layout", format: "text" },
+      { key: "keyboardSide", label: "Side", format: "text" },
       { key: "contentMode", label: "Mode", format: "text" },
       { key: "audioMode", label: "Audio", format: "text" },
       { key: "itemsPerSession", label: "Items", format: "count" },
       { key: "completed", label: "Completed", format: "text" },
       { key: "accuracyPercent", label: "Accuracy", format: "percent" },
+      {
+        key: "itemCompletionRatePercent",
+        label: "Item Completion",
+        format: "percent",
+      },
+      {
+        key: "eventualAccuracyPercent",
+        label: "Eventual Accuracy",
+        format: "percent",
+      },
       {
         key: "firstAttemptSuccessRatePercent",
         label: "First Attempt",
@@ -165,6 +197,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       {
         key: "meanCorrectLatencyMs",
         label: "Mean Correct Latency",
+        format: "milliseconds",
+      },
+      {
+        key: "medianCorrectLatencyMs",
+        label: "Median Latency",
         format: "milliseconds",
       },
       {
@@ -184,6 +221,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     configurationFilters: [
+      { key: "keyboardLayout", label: "Keyboard Layout" },
+      { key: "keyboardSide", label: "Keyboard Side" },
+      { key: "keyLabels", label: "Key Labels" },
       { key: "contentMode", label: "Mode" },
       { key: "wordLength", label: "Word Length" },
       { key: "audioMode", label: "Beat" },
@@ -235,7 +275,10 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       { key: "targetChanges", label: "Targets Presented", format: "count" },
     ],
     tableColumns: [
+      { key: "keyboardLayout", label: "Layout", format: "text" },
+      { key: "keyboardSide", label: "Side", format: "text" },
       { key: "mode", label: "Order", format: "text" },
+      { key: "targetCount", label: "Targets", format: "count" },
       { key: "pattern", label: "Pattern", format: "text" },
       { key: "targetChanges", label: "Targets Presented", format: "count" },
       {
@@ -252,6 +295,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       },
     ],
     configurationFilters: [
+      { key: "keyboardLayout", label: "Keyboard Layout" },
+      { key: "keyboardSide", label: "Keyboard Side" },
+      { key: "keyLabels", label: "Key Labels" },
       { key: "mode", label: "Mode" },
       { key: "audioMode", label: "Beat" },
       { key: "tempo", label: "Tempo" },

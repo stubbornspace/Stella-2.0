@@ -195,6 +195,9 @@ export function InhibitionChallengeRuntime({
       elapsedSeconds: Math.round(
         elapsedFrom(sessionStartedAtRef.current) / 1000
       ),
+      keyboardLayout: setup.keyboardLayout,
+      keyboardSide: setup.keyboardSide,
+      keyLabels: setup.keyLabels,
       responseWindowMs: setup.responseWindowMs,
       rulePreset: setup.rulePreset,
       trialCount: setup.trialCount,
@@ -555,6 +558,9 @@ export function MotorSequenceBuilderRuntime({
       elapsedSeconds: Math.round(
         elapsedFrom(sessionStartedAtRef.current) / 1000
       ),
+      keyboardLayout: setup.keyboardLayout,
+      keyboardSide: setup.keyboardSide,
+      keyLabels: setup.keyLabels,
       presentationSpeedBpm: setup.presentationSpeedBpm,
       sequenceCount: setup.sequenceCount,
       sequenceLength: setup.sequenceLength,

@@ -11,6 +11,7 @@ interface KeyboardKeyProps {
   onClick?: (id: number, inputTimeMs?: number) => void
   disabled?: boolean
   beatFlashIntervalMs?: number
+  showLabel?: boolean
 }
 
 export function KeyboardKey({
@@ -21,6 +22,7 @@ export function KeyboardKey({
   onClick,
   disabled = false,
   beatFlashIntervalMs,
+  showLabel = true,
 }: KeyboardKeyProps) {
   const isBlank = letter === ""
   const handledPointerRef = useRef(false)
@@ -80,7 +82,7 @@ export function KeyboardKey({
           : undefined
       }
     >
-      {letter ? (
+      {letter && showLabel ? (
         <span className="text-[clamp(1rem,2.3vw,2rem)] font-bold text-white uppercase">
           {letter}
         </span>

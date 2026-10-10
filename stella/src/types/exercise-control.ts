@@ -21,9 +21,15 @@ export type KeyboardRuntimeExerciseType = Extract<
 export type ExerciseAudioMode = "silent" | "metronome" | "music"
 export type WordLength = "3" | "4" | "5" | "6" | "7" | "8"
 export type HistoricalWordLength = "0-5" | "5-10" | "10+"
+export type KeyboardLayoutMode = "qwerty" | "alphabetical"
+export type KeyboardSide = "full" | "left" | "right"
+export type KeyLabelMode = "letters" | "blank"
 
 interface BaseExerciseSetup {
   activity: RunnableExerciseType
+  keyboardLayout: KeyboardLayoutMode
+  keyboardSide: KeyboardSide
+  keyLabels: KeyLabelMode
 }
 
 interface AudioExerciseSetup extends BaseExerciseSetup {
@@ -51,6 +57,7 @@ export interface LetterFindSetup extends AudioExerciseSetup {
 export interface EyePongSetup extends AudioExerciseSetup {
   activity: "eye-pong"
   mode: "left-right" | "random"
+  targetCount: number
 }
 
 export interface InhibitionChallengeSetup extends BaseExerciseSetup {
@@ -87,6 +94,7 @@ export interface LetterRuntimeStat {
   targetStartedAt?: string
   completedAt?: string
   attemptEvents?: Array<{
+    keyId?: number
     pressedLetter: string
     correct: boolean
     timestamp: string
@@ -99,6 +107,9 @@ export interface LetterRuntimeStat {
 interface BaseExerciseRunResult {
   activity: KeyboardRuntimeExerciseType
   elapsedSeconds: number
+  keyboardLayout: KeyboardLayoutMode
+  keyboardSide: KeyboardSide
+  keyLabels: KeyLabelMode
 }
 
 export interface LetterTargetRunResult extends BaseExerciseRunResult {

@@ -1,4 +1,8 @@
-import type { ExerciseSetup, RunnableExerciseType } from "@/types/exercise-control"
+import type {
+  ExerciseSetup,
+  RunnableExerciseType,
+} from "@/types/exercise-control"
+import { normalizeExerciseSetup } from "@/config/exercise-control"
 
 const storageKeyPrefix = "stella-runtime-pending"
 const rerunStorageKeyPrefix = "stella-runtime-rerun"
@@ -41,7 +45,8 @@ export function loadPendingExerciseRun(
   }
 
   try {
-    return JSON.parse(raw) as PendingExerciseRun
+    const parsed = JSON.parse(raw) as PendingExerciseRun
+    return { ...parsed, setup: normalizeExerciseSetup(parsed.setup) }
   } catch {
     return null
   }
@@ -55,7 +60,10 @@ export function clearPendingExerciseRun(
 }
 
 export function saveRerunExerciseSetup(run: RerunExerciseSetup) {
-  window.sessionStorage.setItem(rerunStorageKey(run.patientId), JSON.stringify(run))
+  window.sessionStorage.setItem(
+    rerunStorageKey(run.patientId),
+    JSON.stringify(run)
+  )
 }
 
 export function loadRerunExerciseSetup(patientId: string) {
@@ -66,7 +74,8 @@ export function loadRerunExerciseSetup(patientId: string) {
   }
 
   try {
-    return JSON.parse(raw) as RerunExerciseSetup
+    const parsed = JSON.parse(raw) as RerunExerciseSetup
+    return { ...parsed, setup: normalizeExerciseSetup(parsed.setup) }
   } catch {
     return null
   }

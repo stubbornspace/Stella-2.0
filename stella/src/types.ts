@@ -29,6 +29,35 @@ export interface BaseSession {
   totalSessionDurationMinutes?: number
   attemptsPerMinute?: number
   pauseBreakCount?: number
+  keyboardLayout?: "qwerty" | "alphabetical"
+  keyboardSide?: "full" | "left" | "right"
+  keyLabels?: "letters" | "blank"
+}
+
+export interface LetterKeyResult {
+  keyId: number
+  letter: string
+  trials: number
+  firstAttemptAccuracyPercent: number
+  meanCorrectLatencyMs?: number
+  incorrectAttempts: number
+  beat: "silent" | "metronome" | "music"
+}
+
+export interface LetterWordResult {
+  word: string
+  length: number
+  trials: number
+  firstAttemptAccuracyPercent: number
+  completionTimeMs?: number
+  interKeyIntervalMs?: number
+  beat: "silent" | "metronome" | "music"
+}
+
+export interface LetterSequenceResult {
+  item: number
+  lettersInItem: number
+  lettersCompleted: number
 }
 
 export interface LetterTargetSession extends BaseSession {
@@ -51,6 +80,24 @@ export interface LetterTargetSession extends BaseSession {
   onBeatAccuracyPercent?: number
   timingVariabilityStdDev?: number
   directionalConsistencyPercent?: number
+  dominantErrorDirection?: "above" | "below" | "left" | "right"
+  errorDirectionCounts?: Partial<
+    Record<"above" | "below" | "left" | "right", number>
+  >
+  eventualAccuracyPercent?: number
+  itemCompletionRatePercent?: number
+  latencyIqrMs?: number
+  meanFirstResponseLatencyMs?: number
+  meanIncorrectAttemptsPerTrial?: number
+  meanMissDistance?: number
+  meanResponseLatencyMs?: number
+  medianCorrectLatencyMs?: number
+  mostCommonBreakdownPosition?: number
+  responseLatencyStdDev?: number
+  sequenceCompletionRatePercent?: number
+  byKey?: LetterKeyResult[]
+  byWord?: LetterWordResult[]
+  sequencePerformance?: LetterSequenceResult[]
 }
 
 export interface LetterFindSession extends BaseSession {
@@ -71,6 +118,26 @@ export interface LetterFindSession extends BaseSession {
   timeoutSeconds?: number
   onBeatAccuracyPercent?: number
   timingVariabilityStdDev?: number
+  directionalConsistencyPercent?: number
+  dominantErrorDirection?: "above" | "below" | "left" | "right"
+  errorDirectionCounts?: Partial<
+    Record<"above" | "below" | "left" | "right", number>
+  >
+  eventualAccuracyPercent?: number
+  itemCompletionRatePercent?: number
+  latencyIqrMs?: number
+  latencyVariabilityStdDev?: number
+  meanFirstResponseLatencyMs?: number
+  meanIncorrectAttemptsPerTrial?: number
+  meanMissDistance?: number
+  meanResponseLatencyMs?: number
+  medianCorrectLatencyMs?: number
+  mostCommonBreakdownPosition?: number
+  responseLatencyStdDev?: number
+  sequenceCompletionRatePercent?: number
+  byKey?: LetterKeyResult[]
+  byWord?: LetterWordResult[]
+  sequencePerformance?: LetterSequenceResult[]
 }
 
 export interface EyePongSession extends BaseSession {
