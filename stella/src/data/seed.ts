@@ -9,6 +9,23 @@ import type {
   MotorSequenceBuilderSession,
   Patient,
 } from "@/types"
+import type {
+  EyePongCueEvent,
+  LetterRuntimeStat,
+} from "@/types/exercise-control"
+import { summarizeBeatOffsets } from "@/lib/audio/beat-metrics"
+import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
+import {
+  KEY_TO_LETTER,
+  LETTER_KEYS,
+  LETTER_TO_KEY,
+} from "@/lib/audio/constants"
+import {
+  EYE_PONG_DEFAULT_VISUAL_BPM,
+  EYE_PONG_TARGET_COUNT,
+  getEyePongCompletionRate,
+  getEyePongIntervalMs,
+} from "@/lib/exercise-runtime/eye-pong"
 
 const demoToday = new Date("2026-09-15T12:00:00")
 
@@ -419,13 +436,150 @@ function makeLetterTarget(
   const contentMode = sessionIndex % 3 === 0 ? "letters" : "words"
   const itemsTotal =
     contentMode === "letters" ? 3 + (sessionIndex % 5) : 2 + (sessionIndex % 4)
-  const itemsCompleted = point.accuracy > 82 ? itemsTotal : itemsTotal - 1
+  const status = sessionStatus(sessionIndex, patientId)
+  const itemsCompleted =
+    status === "ended-early"
+      ? Math.max(1, itemsTotal - 1)
+      : point.accuracy > 82
+        ? itemsTotal
+        : itemsTotal - 1
   const audioMode =
     sessionIndex % 4 === 0
       ? "silent"
       : sessionIndex % 2 === 0
         ? "music"
         : "metronome"
+  const wordLength =
+    contentMode === "words"
+      ? (["3", "4", "5", "6", "7", "8"] as const)[sessionIndex % 6]
+      : undefined
+  const targetCount =
+    contentMode === "letters"
+      ? itemsCompleted
+      : itemsCompleted * Number(wordLength)
+  const desiredAccuracy = clamp(point.accuracy, 68, 96)
+  const desiredFirstAttempt = clamp(point.firstAttempt, 62, 94)
+  const targetsWithErrors = Math.max(
+    0,
+    targetCount - Math.round((targetCount * desiredFirstAttempt) / 100)
+  )
+  const accuracyErrors = Math.max(
+    0,
+    Math.round(targetCount * (100 / desiredAccuracy - 1))
+  )
+  const errorBudget = Math.max(targetsWithErrors, accuracyErrors)
+  const tempoBpm =
+    audioMode === "metronome" ? 50 + (sessionIndex % 5) * 8 : undefined
+  const musicPlaybackRate =
+    audioMode === "music"
+      ? ([0.8, 1, 1.2, 1.4][sessionIndex % 4] ?? 1)
+      : undefined
+  const actualBpm =
+    audioMode === "silent"
+      ? undefined
+      : audioMode === "music"
+        ? STOMP_DOWNBEAT_BPM * (musicPlaybackRate ?? 1)
+        : tempoBpm
+  const desiredOnBeatAccuracy = clamp(point.accuracy - 6, 60, 92)
+  const onBeatTargetCount = Math.round(
+    (targetCount * desiredOnBeatAccuracy) / 100
+  )
+  const sessionDate = dateFor(startOffset, sessionIndex, activityIndex)
+  const stats: LetterRuntimeStat[] = Array.from(
+    { length: targetCount },
+    (_, targetIndex) => {
+      const baseErrors = Math.floor(errorBudget / Math.max(targetCount, 1))
+      const extraError =
+        targetIndex < errorBudget % Math.max(targetCount, 1) ? 1 : 0
+      const errorsForTarget = baseErrors + extraError
+      const letter = String.fromCharCode(65 + ((seed + targetIndex * 5) % 26))
+      const targetStartedAtMs =
+        new Date(sessionDate).getTime() + targetIndex * 4000
+      const timeMs = Math.max(
+        300,
+        Math.round(point.latency + ((targetIndex % 4) - 1.5) * 45)
+      )
+      const beatOffsetMs = actualBpm
+        ? targetIndex < onBeatTargetCount
+          ? 55 + ((targetIndex * 23 + seed) % 80)
+          : 190 + ((targetIndex * 29 + seed) % 90)
+        : undefined
+      const attemptEvents = Array.from(
+        { length: errorsForTarget },
+        (_, attemptIndex) => ({
+          beatOffsetMs,
+          correct: false,
+          pressedLetter: String.fromCharCode(
+            65 + ((seed + targetIndex * 5 + attemptIndex + 1) % 26)
+          ),
+          timestamp: new Date(
+            targetStartedAtMs + (attemptIndex + 1) * 225
+          ).toISOString(),
+        })
+      )
+
+      attemptEvents.push({
+        beatOffsetMs,
+        correct: true,
+        pressedLetter: letter,
+        timestamp: new Date(targetStartedAtMs + timeMs).toISOString(),
+      })
+
+      return {
+        attemptEvents,
+        attempts: errorsForTarget + 1,
+        beatOffsetMs,
+        completedAt: new Date(targetStartedAtMs + timeMs).toISOString(),
+        letter,
+        targetStartedAt: new Date(targetStartedAtMs).toISOString(),
+        timeMs,
+      }
+    }
+  )
+  const totalAttempts = stats.reduce((sum, stat) => sum + stat.attempts, 0)
+  const correctHits = stats.length
+  const incorrectAttempts = totalAttempts - correctHits
+  const accuracyPercent =
+    totalAttempts === 0 ? 0 : round((correctHits / totalAttempts) * 100)
+  const firstAttemptSuccessRatePercent =
+    correctHits === 0
+      ? 0
+      : round(
+          (stats.filter((stat) => stat.attempts === 1).length / correctHits) *
+            100
+        )
+  const meanCorrectLatencyMs =
+    correctHits === 0
+      ? 0
+      : round(stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits)
+  const latencyVariabilityStdDev =
+    correctHits === 0
+      ? 0
+      : round(
+          Math.sqrt(
+            stats.reduce(
+              (sum, stat) => sum + (stat.timeMs - meanCorrectLatencyMs) ** 2,
+              0
+            ) / correctHits
+          )
+        )
+  const beatMetrics = summarizeBeatOffsets(
+    stats
+      .map((stat) => stat.beatOffsetMs)
+      .filter((value): value is number => typeof value === "number"),
+    actualBpm
+  )
+  const responseSeconds =
+    stats.reduce((sum, stat) => sum + stat.timeMs, 0) / 1000
+  const feedbackSeconds = stats.length * (contentMode === "letters" ? 2.1 : 2.3)
+  const activeEngagementTimeMinutes = Math.max(
+    0.1,
+    round((responseSeconds + feedbackSeconds + incorrectAttempts * 0.7) / 60, 2)
+  )
+  const totalSessionDurationMinutes = round(
+    activeEngagementTimeMinutes + 0.2,
+    2
+  )
 
   return {
     ...baseSession(
@@ -437,32 +591,30 @@ function makeLetterTarget(
     ),
     contentMode,
     itemsPerSession: itemsTotal,
-    wordLength:
-      contentMode === "words"
-        ? sessionIndex % 2 === 0
-          ? "5-10"
-          : "0-5"
-        : undefined,
+    wordLength,
     audioMode,
-    tempoBpm:
-      audioMode === "metronome" ? 50 + (sessionIndex % 5) * 8 : undefined,
-    musicPlaybackRate:
-      audioMode === "music" ? [0.8, 1, 1.2, 1.4][sessionIndex % 4] : undefined,
+    tempoBpm,
+    musicPlaybackRate,
     itemsCompleted,
     itemsTotal,
-    totalAttempts: itemsCompleted + point.errors,
-    correctHits: itemsCompleted,
-    accuracyPercent: point.accuracy,
-    firstAttemptSuccessRatePercent: point.firstAttempt,
-    meanCorrectLatencyMs: point.latency,
-    incorrectAttempts: point.errors,
-    latencyVariabilityStdDev: 95 + sessionIndex * 8,
-    onBeatAccuracyPercent:
-      audioMode === "silent" ? undefined : clamp(point.accuracy - 6, 60, 92),
-    timingVariabilityStdDev:
-      audioMode === "silent" ? undefined : 118 + sessionIndex * 6,
-    directionalConsistencyPercent:
-      sessionIndex % 2 === 0 ? clamp(point.accuracy + 2, 70, 98) : undefined,
+    totalAttempts,
+    correctHits,
+    accuracyPercent,
+    firstAttemptSuccessRatePercent,
+    meanCorrectLatencyMs,
+    incorrectAttempts,
+    latencyVariabilityStdDev,
+    onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
+    timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
+    directionalConsistencyPercent: undefined,
+    activeEngagementTimeMinutes,
+    totalSessionDurationMinutes,
+    attemptsPerMinute: round(totalAttempts / activeEngagementTimeMinutes, 1),
+    rawEventPayload: {
+      activity: "letter-target",
+      actualBpm,
+      stats,
+    },
   }
 }
 
@@ -478,13 +630,129 @@ function makeLetterFind(
   const contentMode = sessionIndex % 2 === 0 ? "letters" : "words"
   const itemsTotal =
     contentMode === "letters" ? 4 + (sessionIndex % 5) : 2 + (sessionIndex % 4)
-  const itemsCompleted = point.accuracy > 80 ? itemsTotal : itemsTotal - 1
+  const status = sessionStatus(sessionIndex, patientId)
+  const itemsCompleted =
+    status === "ended-early"
+      ? Math.max(1, itemsTotal - 1)
+      : point.accuracy > 80
+        ? itemsTotal
+        : itemsTotal - 1
   const audioMode =
     sessionIndex % 3 === 0
       ? "silent"
       : sessionIndex % 2 === 0
         ? "music"
         : "metronome"
+  const wordLength =
+    contentMode === "words"
+      ? (["3", "4", "5", "6", "7", "8"] as const)[sessionIndex % 6]
+      : undefined
+  const targetCount =
+    contentMode === "letters"
+      ? itemsCompleted
+      : itemsCompleted * Number(wordLength)
+  const desiredAccuracy = clamp(point.accuracy - 2, 64, 94)
+  const desiredFirstAttempt = clamp(point.firstAttempt - 1, 60, 92)
+  const targetsWithErrors = Math.max(
+    0,
+    targetCount - Math.round((targetCount * desiredFirstAttempt) / 100)
+  )
+  const accuracyErrors = Math.max(
+    0,
+    Math.round(targetCount * (100 / desiredAccuracy - 1))
+  )
+  const errorBudget = Math.max(targetsWithErrors, accuracyErrors)
+  const sessionDate = dateFor(startOffset, sessionIndex, activityIndex)
+  const actualBpm =
+    audioMode === "silent"
+      ? undefined
+      : audioMode === "metronome"
+        ? 46 + (sessionIndex % 5) * 10
+        : 83.35 * ([0.7, 0.9, 1.1, 1.3][sessionIndex % 4] ?? 1)
+  const stats: LetterRuntimeStat[] = Array.from(
+    { length: targetCount },
+    (_, targetIndex) => {
+      const baseErrors = Math.floor(errorBudget / Math.max(targetCount, 1))
+      const extraError =
+        targetIndex < errorBudget % Math.max(targetCount, 1) ? 1 : 0
+      const errorsForTarget = baseErrors + extraError
+      const letter = String.fromCharCode(65 + ((seed + targetIndex * 7) % 26))
+      const targetStartedAtMs =
+        new Date(sessionDate).getTime() + targetIndex * 5000
+      const timeMs = Math.max(
+        350,
+        Math.round(point.latency + 110 + ((targetIndex % 3) - 1) * 55)
+      )
+      const beatOffsetMs = actualBpm
+        ? Math.round(
+            55 +
+              (100 - clamp(point.firstAttempt, 0, 100)) * 2.5 +
+              ((targetIndex * 29 + seed) % 65)
+          )
+        : undefined
+      const attemptEvents = Array.from(
+        { length: errorsForTarget },
+        (_, attemptIndex) => ({
+          beatOffsetMs,
+          correct: false,
+          pressedLetter: String.fromCharCode(
+            65 + ((seed + targetIndex * 7 + attemptIndex + 1) % 26)
+          ),
+          timestamp: new Date(
+            targetStartedAtMs + (attemptIndex + 1) * 250
+          ).toISOString(),
+        })
+      )
+
+      attemptEvents.push({
+        beatOffsetMs,
+        correct: true,
+        pressedLetter: letter,
+        timestamp: new Date(targetStartedAtMs + timeMs).toISOString(),
+      })
+
+      return {
+        attemptEvents,
+        attempts: errorsForTarget + 1,
+        beatOffsetMs,
+        completedAt: new Date(targetStartedAtMs + timeMs).toISOString(),
+        letter,
+        targetStartedAt: new Date(targetStartedAtMs).toISOString(),
+        timeMs,
+      }
+    }
+  )
+  const totalAttempts = stats.reduce((sum, stat) => sum + stat.attempts, 0)
+  const correctHits = stats.length
+  const incorrectAttempts = totalAttempts - correctHits
+  const accuracyPercent =
+    totalAttempts === 0 ? 0 : round((correctHits / totalAttempts) * 100)
+  const firstAttemptSuccessRatePercent =
+    correctHits === 0
+      ? 0
+      : round(
+          (stats.filter((stat) => stat.attempts === 1).length / correctHits) *
+            100
+        )
+  const meanCorrectLatencyMs =
+    correctHits === 0
+      ? 0
+      : round(stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits)
+  const beatOffsets = stats
+    .map((stat) => stat.beatOffsetMs)
+    .filter((value): value is number => typeof value === "number")
+  const beatMetrics = summarizeBeatOffsets(beatOffsets, actualBpm)
+  const responseSeconds =
+    stats.reduce((sum, stat) => sum + stat.timeMs, 0) / 1000
+  const feedbackSeconds = stats.length * (contentMode === "letters" ? 4.2 : 2.4)
+  const activeEngagementTimeMinutes = Math.max(
+    0.1,
+    round((responseSeconds + feedbackSeconds + incorrectAttempts * 0.8) / 60, 2)
+  )
+  const totalSessionDurationMinutes = round(
+    activeEngagementTimeMinutes + 0.2,
+    2
+  )
 
   return {
     ...baseSession(
@@ -496,22 +764,15 @@ function makeLetterFind(
     ),
     contentMode,
     itemsPerSession: itemsTotal,
-    wordLength:
-      contentMode === "words"
-        ? sessionIndex % 3 === 0
-          ? "10+"
-          : sessionIndex % 2 === 0
-            ? "5-10"
-            : "0-5"
-        : undefined,
+    wordLength,
     itemsCompleted,
     itemsTotal,
-    totalAttempts: itemsCompleted + point.errors,
-    correctHits: itemsCompleted,
-    accuracyPercent: clamp(point.accuracy - 2, 64, 94),
-    firstAttemptSuccessRatePercent: clamp(point.firstAttempt - 1, 60, 92),
-    meanCorrectLatencyMs: point.latency + 110,
-    incorrectAttempts: point.errors,
+    totalAttempts,
+    correctHits,
+    accuracyPercent,
+    firstAttemptSuccessRatePercent,
+    meanCorrectLatencyMs,
+    incorrectAttempts,
     audioMode,
     tempoBpm:
       audioMode === "metronome" ? 46 + (sessionIndex % 5) * 10 : undefined,
@@ -519,6 +780,16 @@ function makeLetterFind(
       audioMode === "music"
         ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4]
         : undefined,
+    activeEngagementTimeMinutes,
+    totalSessionDurationMinutes,
+    attemptsPerMinute: round(totalAttempts / activeEngagementTimeMinutes, 1),
+    onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
+    timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
+    rawEventPayload: {
+      activity: "letter-find",
+      actualBpm,
+      stats,
+    },
   }
 }
 
@@ -530,37 +801,102 @@ function makeEyePong(
   startOffset: number,
   seed: number
 ): EyePongSession {
-  const point = metricPoint(seed + 4, sessionIndex, patientId, sessionCount)
+  const base = baseSession(
+    patientId,
+    "eye-pong",
+    sessionIndex,
+    activityIndex,
+    startOffset
+  )
   const audioMode =
     sessionIndex % 3 === 0
       ? "silent"
       : sessionIndex % 2 === 0
         ? "music"
         : "metronome"
-  const patterns: EyePongSession["pattern"][] = [
-    "horizontal",
-    "vertical",
-    "diagonal",
-    "mixed",
-  ]
+  const mode = sessionIndex % 2 === 0 ? "left-right" : "random"
+  const tempoBpm =
+    audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined
+  const musicPlaybackRate =
+    audioMode === "music" ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4] : undefined
+  const actualBpm =
+    audioMode === "music"
+      ? STOMP_DOWNBEAT_BPM * (musicPlaybackRate ?? 1)
+      : (tempoBpm ?? EYE_PONG_DEFAULT_VISUAL_BPM)
+  const intervalMs = getEyePongIntervalMs(actualBpm)
+  const targetChanges =
+    base.status === "completed"
+      ? EYE_PONG_TARGET_COUNT
+      : 12 + ((seed + sessionIndex) % 7)
+  const firstCueOffsetMs =
+    audioMode === "music"
+      ? Math.round((0.3715 / (musicPlaybackRate ?? 1)) * 1000)
+      : audioMode === "metronome"
+        ? 50
+        : 0
+  const delays = [-3, 2, 5, -1, 3, 1]
+  const cueEvents: EyePongCueEvent[] = Array.from(
+    { length: targetChanges },
+    (_, cueIndex) => {
+      const keyId =
+        mode === "left-right"
+          ? [LETTER_TO_KEY.A, LETTER_TO_KEY.L][cueIndex % 2]!
+          : LETTER_KEYS[
+              (seed + sessionIndex * 3 + cueIndex * 7) % LETTER_KEYS.length
+            ]!
+      const scheduledOffsetMs = firstCueOffsetMs + cueIndex * intervalMs
+      const presentationDelayMs =
+        delays[(cueIndex + sessionIndex) % delays.length]!
+
+      return {
+        sequence: cueIndex + 1,
+        keyId,
+        letter: KEY_TO_LETTER[keyId]!,
+        scheduledOffsetMs,
+        presentedOffsetMs: scheduledOffsetMs + presentationDelayMs,
+        presentationDelayMs,
+      }
+    }
+  )
+  const targetHoldMs = Math.min(
+    600,
+    Math.max(180, Math.round(intervalMs * 0.7))
+  )
+  const elapsedSeconds = Math.max(
+    1,
+    Math.ceil(
+      ((cueEvents.at(-1)?.presentedOffsetMs ?? 0) + targetHoldMs) / 1000
+    )
+  )
+  const durationMinutes = round(elapsedSeconds / 60, 2)
 
   return {
-    ...baseSession(
-      patientId,
-      "eye-pong",
-      sessionIndex,
-      activityIndex,
-      startOffset
-    ),
-    mode: sessionIndex % 2 === 0 ? "left-right" : "random",
-    pattern: patterns[sessionIndex % patterns.length],
-    targetChanges: point.changes,
-    completionRatePercent: point.completion,
+    ...base,
+    mode,
+    pattern: mode === "left-right" ? "horizontal" : "mixed",
+    targetCount: EYE_PONG_TARGET_COUNT,
+    targetChanges,
+    completionRatePercent: getEyePongCompletionRate(targetChanges),
     audioMode,
-    tempoBpm:
-      audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined,
-    musicPlaybackRate:
-      audioMode === "music" ? [0.8, 1, 1.2, 1.5][sessionIndex % 4] : undefined,
+    actualBpm,
+    tempoBpm,
+    musicPlaybackRate,
+    intervalMs,
+    activeEngagementTimeMinutes: durationMinutes,
+    totalSessionDurationMinutes: durationMinutes,
+    attemptsPerMinute: undefined,
+    pauseBreakCount: 0,
+    rawEventPayload: {
+      activity: "eye-pong",
+      actualBpm,
+      audioMode,
+      completionRatePercent: getEyePongCompletionRate(targetChanges),
+      cueEvents,
+      elapsedSeconds,
+      mode,
+      targetCount: EYE_PONG_TARGET_COUNT,
+      targetChanges,
+    },
   }
 }
 

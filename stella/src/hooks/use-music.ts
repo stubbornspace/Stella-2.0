@@ -7,7 +7,7 @@ interface UseMusicOptions {
   beatMode?: "beats" | "downbeats"
   playbackRate?: number
   volume?: number
-  onBeat?: () => void
+  onBeat?: (scheduledTimeMs: number) => void
 }
 
 let cachedMusicBuffer: AudioBuffer | null = null
@@ -43,6 +43,7 @@ export function useMusic({
   const volumeRef = useRef(volume)
   const beatModeRef = useRef(beatMode)
   const playbackRateRef = useRef(playbackRate)
+  const mutedRef = useRef(false)
   const nextBeatIndexRef = useRef(0)
   const loopOffsetRef = useRef(0)
 
@@ -81,7 +82,7 @@ export function useMusic({
 
     const buffer = await loadMusicBuffer()
     const gain = context.createGain()
-    gain.gain.value = volumeRef.current
+    gain.gain.value = mutedRef.current ? 0 : volumeRef.current
     gain.connect(context.destination)
     gainRef.current = gain
 
@@ -94,7 +95,9 @@ export function useMusic({
     sourceRef.current = source
 
     const beatTimes =
-      beatModeRef.current === "beats" ? stompBeatMap.beats : stompBeatMap.downbeats
+      beatModeRef.current === "beats"
+        ? stompBeatMap.beats
+        : stompBeatMap.downbeats
     const duration = stompBeatMap.duration / playbackRateRef.current
     const audioStartTime = context.currentTime
     const lookAheadSeconds = 0.15
@@ -120,7 +123,8 @@ export function useMusic({
       const loopBase = audioStartTime + currentLoop * duration
 
       while (nextBeatIndexRef.current < beatTimes.length) {
-        const adjustedBeatTime = beatTimes[nextBeatIndexRef.current] / playbackRateRef.current
+        const adjustedBeatTime =
+          beatTimes[nextBeatIndexRef.current] / playbackRateRef.current
         const beatAbsoluteTime = loopBase + adjustedBeatTime
 
         if (beatAbsoluteTime > now + lookAheadSeconds) {
@@ -133,9 +137,13 @@ export function useMusic({
         }
 
         const delayMs = (beatAbsoluteTime - now) * 1000
-        window.setTimeout(() => {
-          onBeatRef.current?.()
-        }, Math.max(0, delayMs))
+        const scheduledTimeMs = performance.now() + delayMs
+        window.setTimeout(
+          () => {
+            onBeatRef.current?.(scheduledTimeMs)
+          },
+          Math.max(0, delayMs)
+        )
         nextBeatIndexRef.current += 1
       }
     }
@@ -166,7 +174,24 @@ export function useMusic({
     }
   }, [])
 
+  const setMuted = useCallback((muted: boolean) => {
+    mutedRef.current = muted
+
+    if (!gainRef.current) {
+      return
+    }
+
+    const context = getAudioContext()
+    const now = context.currentTime
+    gainRef.current.gain.cancelScheduledValues(now)
+    gainRef.current.gain.setTargetAtTime(
+      muted ? 0 : volumeRef.current,
+      now,
+      0.02
+    )
+  }, [])
+
   useEffect(() => () => stop(), [stop])
 
-  return { start, stop }
+  return { setMuted, start, stop }
 }

@@ -8,6 +8,7 @@ interface KeyboardKeyProps {
   state?: KeyState
   onClick?: (id: number) => void
   disabled?: boolean
+  beatFlashIntervalMs?: number
 }
 
 export function KeyboardKey({
@@ -17,6 +18,7 @@ export function KeyboardKey({
   state = "idle",
   onClick,
   disabled = false,
+  beatFlashIntervalMs,
 }: KeyboardKeyProps) {
   const isBlank = letter === ""
 
@@ -33,9 +35,9 @@ export function KeyboardKey({
 
     switch (state) {
       case "beat":
-        return "animate-[beat-flash_0.3s_ease-out]"
-      case "waiting":
         return "bg-[#00ff00]"
+      case "waiting":
+        return beatFlashIntervalMs ? "bg-[#1b4ee6]" : "bg-[#00ff00]"
       case "correct":
         return "bg-[#00ff00] animate-[flash_0.5s_ease-in-out]"
       case "incorrect":
@@ -45,28 +47,56 @@ export function KeyboardKey({
     }
   }
 
-  return (
+  const content = (
     <div
       className={cn(
-        "relative flex aspect-square w-full items-center justify-center rounded-full bg-[#091a2c] shadow-lg transition-all duration-200",
-        !disabled && !isBlank && "cursor-pointer hover:shadow-xl active:scale-95",
-        disabled && "cursor-not-allowed opacity-50",
-        className
+        "flex h-[60%] w-[60%] items-center justify-center rounded-full",
+        getInnerCircleClasses()
       )}
-      onClick={handleClick}
+      style={
+        state === "waiting" && beatFlashIntervalMs
+          ? {
+              animation: `beat-flash-green ${beatFlashIntervalMs}ms steps(1, end) infinite`,
+            }
+          : undefined
+      }
     >
+      {letter ? (
+        <span className="text-[clamp(1rem,2.3vw,2rem)] font-bold text-white uppercase">
+          {letter}
+        </span>
+      ) : null}
+    </div>
+  )
+
+  if (isBlank) {
+    return (
       <div
+        aria-hidden="true"
         className={cn(
-          "flex h-[60%] w-[60%] items-center justify-center rounded-full",
-          getInnerCircleClasses()
+          "relative flex aspect-square w-full items-center justify-center rounded-full bg-[#091a2c] shadow-lg",
+          className
         )}
       >
-        {letter ? (
-          <span className="text-[clamp(1rem,2.3vw,2rem)] font-bold text-white uppercase">
-            {letter}
-          </span>
-        ) : null}
+        {content}
       </div>
-    </div>
+    )
+  }
+
+  return (
+    <button
+      aria-label={`${letter} key${state === "correct" ? ", correct" : state === "incorrect" ? ", incorrect" : ""}`}
+      className={cn(
+        "relative flex aspect-square w-full items-center justify-center rounded-full bg-[#091a2c] shadow-lg transition-all duration-200 outline-none focus-visible:ring-4 focus-visible:ring-ring/70",
+        !disabled && "cursor-pointer hover:shadow-xl active:scale-95",
+        disabled && "cursor-default",
+        className
+      )}
+      disabled={disabled}
+      onClick={handleClick}
+      type="button"
+    >
+      {content}
+    </button>
   )
 }

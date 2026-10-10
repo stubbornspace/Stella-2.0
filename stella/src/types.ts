@@ -69,12 +69,16 @@ export interface LetterFindSession extends BaseSession {
   audioMode: "silent" | "metronome" | "music"
   tempoBpm?: number
   timeoutSeconds?: number
+  onBeatAccuracyPercent?: number
+  timingVariabilityStdDev?: number
 }
 
 export interface EyePongSession extends BaseSession {
   activity: "eye-pong"
+  actualBpm?: number
   mode?: "left-right" | "random"
   pattern: "horizontal" | "vertical" | "diagonal" | "mixed"
+  targetCount?: number
   targetChanges: number
   completionRatePercent: number
   audioMode: "silent" | "metronome" | "music"

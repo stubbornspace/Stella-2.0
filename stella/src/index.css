@@ -142,3 +142,24 @@ h6 {
   font-family: var(--font-heading);
   font-weight: 700;
 }
+
+@keyframes beat-flash-green {
+  0%,
+  22% {
+    background-color: #00ff00;
+  }
+  23%,
+  100% {
+    background-color: #1b4ee6;
+  }
+}
+
+@keyframes flash {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.45);
+  }
+}

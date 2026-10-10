@@ -36,6 +36,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Avg Incorrect Attempts",
         format: "decimal",
       },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "Avg On-Beat Accuracy",
+        format: "percent",
+      },
     ],
     charts: [
       {
@@ -47,6 +52,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         key: "meanCorrectLatencyMs",
         label: "Correct Response Latency",
         format: "milliseconds",
+      },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "On-Beat Accuracy",
+        format: "percent",
       },
     ],
     tableColumns: [
@@ -66,6 +76,16 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         format: "milliseconds",
       },
       { key: "incorrectAttempts", label: "Errors", format: "count" },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "On Beat",
+        format: "percent",
+      },
+      {
+        key: "timingVariabilityStdDev",
+        label: "Timing Variation",
+        format: "milliseconds",
+      },
     ],
     configurationFilters: [
       { key: "contentMode", label: "Mode" },
@@ -108,6 +128,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Avg Incorrect Attempts",
         format: "decimal",
       },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "Avg On-Beat Accuracy",
+        format: "percent",
+      },
     ],
     charts: [
       {
@@ -119,6 +144,11 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         key: "meanCorrectLatencyMs",
         label: "Mean Correct Latency",
         format: "milliseconds",
+      },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "On-Beat Accuracy",
+        format: "percent",
       },
     ],
     tableColumns: [
@@ -142,6 +172,16 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
         label: "Incorrect Attempts",
         format: "count",
       },
+      {
+        key: "onBeatAccuracyPercent",
+        label: "On Beat",
+        format: "percent",
+      },
+      {
+        key: "timingVariabilityStdDev",
+        label: "Timing Variation",
+        format: "milliseconds",
+      },
     ],
     configurationFilters: [
       { key: "contentMode", label: "Mode" },
@@ -152,18 +192,19 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
   "eye-pong": {
     id: "eye-pong",
     label: "Eye Pong",
-    description: "Target tracking without eye-tracking claims.",
+    description:
+      "Visual target presentation without eye-tracking or gaze-performance claims.",
     patientSummary: [
       {
         key: "completionRatePercent",
-        label: "Completion Rate",
+        label: "Protocol Completion",
         shortLabel: "Completion",
         format: "percent",
       },
       {
         key: "targetChanges",
-        label: "Target Changes",
-        shortLabel: "Changes",
+        label: "Targets Presented",
+        shortLabel: "Targets",
         format: "count",
       },
     ],
@@ -171,12 +212,12 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       { key: "sessionCount", label: "Sessions", format: "count" },
       {
         key: "completionRatePercent",
-        label: "Average Completion Rate",
+        label: "Average Protocol Completion",
         format: "percent",
       },
       {
         key: "targetChanges",
-        label: "Average Target Changes",
+        label: "Average Targets Presented",
         format: "count",
       },
       {
@@ -188,22 +229,22 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
     charts: [
       {
         key: "completionRatePercent",
-        label: "Completion Rate",
+        label: "Protocol Completion",
         format: "percent",
       },
-      { key: "targetChanges", label: "Target Changes", format: "count" },
+      { key: "targetChanges", label: "Targets Presented", format: "count" },
     ],
     tableColumns: [
       { key: "mode", label: "Order", format: "text" },
       { key: "pattern", label: "Pattern", format: "text" },
-      { key: "targetChanges", label: "Target Changes", format: "count" },
+      { key: "targetChanges", label: "Targets Presented", format: "count" },
       {
         key: "completionRatePercent",
-        label: "Completion Rate",
+        label: "Protocol Completion",
         format: "percent",
       },
       { key: "audioMode", label: "Audio", format: "text" },
-      { key: "tempoBpm", label: "Tempo", format: "count" },
+      { key: "tempo", label: "Cadence", format: "text" },
       {
         key: "totalSessionDurationMinutes",
         label: "Duration",

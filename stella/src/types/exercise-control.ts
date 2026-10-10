@@ -78,6 +78,14 @@ export interface LetterRuntimeStat {
   attempts: number
   timeMs: number
   beatOffsetMs?: number
+  targetStartedAt?: string
+  completedAt?: string
+  attemptEvents?: Array<{
+    pressedLetter: string
+    correct: boolean
+    timestamp: string
+    beatOffsetMs?: number
+  }>
 }
 
 interface BaseExerciseRunResult {
@@ -105,18 +113,28 @@ export interface LetterFindRunResult extends BaseExerciseRunResult {
   wordLength?: WordLength
 }
 
+export interface EyePongCueEvent {
+  sequence: number
+  keyId: number
+  letter: string
+  scheduledOffsetMs: number
+  presentedOffsetMs: number
+  presentationDelayMs: number
+}
+
 export interface EyePongRunResult extends BaseExerciseRunResult {
   activity: "eye-pong"
+  actualBpm: number
   audioMode: ExerciseAudioMode
   completionRatePercent: number
+  cueEvents: EyePongCueEvent[]
   mode: "left-right" | "random"
+  targetCount: number
   targetChanges: number
 }
 
 export type ExerciseRunResult =
-  | LetterTargetRunResult
-  | LetterFindRunResult
-  | EyePongRunResult
+  LetterTargetRunResult | LetterFindRunResult | EyePongRunResult
 
 export interface SaveExerciseRunInput {
   patientId: string

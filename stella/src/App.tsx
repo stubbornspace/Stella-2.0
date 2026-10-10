@@ -970,7 +970,7 @@ function ChartPanel({
       <div>
         <h3 className="font-medium">{metric.label}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Session-level measured performance over time.
+          Session-level result over time.
         </p>
       </div>
       <div className="mt-4 h-72">
@@ -1182,6 +1182,13 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   if ("intervalMs" in session && session.intervalMs) {
     configRows.push(["Target Interval", `${session.intervalMs} ms`])
   }
+  if (
+    "actualBpm" in session &&
+    session.actualBpm &&
+    !("tempoBpm" in session && session.tempoBpm)
+  ) {
+    configRows.push(["Visual Cadence", `${Math.round(session.actualBpm)} BPM`])
+  }
   if ("rulePreset" in session) {
     configRows.push(["Trial Count", session.trialCount])
     configRows.push(["Trial Mix", displayText(session.rulePreset)])
@@ -1201,6 +1208,14 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   if ("totalAttempts" in session) {
     resultRows.push(["Total Attempts", session.totalAttempts])
     resultRows.push(["Correct Hits", session.correctHits])
+  }
+  if ("targetChanges" in session) {
+    resultRows.push(["Targets Presented", session.targetChanges, "count"])
+    resultRows.push([
+      "Protocol Completion",
+      session.completionRatePercent,
+      "percent",
+    ])
   }
   if ("goAccuracyPercent" in session) {
     resultRows.push(["Go Accuracy", session.goAccuracyPercent, "percent"])
@@ -1234,14 +1249,20 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
       "milliseconds",
     ])
   }
-  if ("onBeatAccuracyPercent" in session && session.onBeatAccuracyPercent) {
+  if (
+    "onBeatAccuracyPercent" in session &&
+    typeof session.onBeatAccuracyPercent === "number"
+  ) {
     resultRows.push([
       "On-Beat Accuracy",
       session.onBeatAccuracyPercent,
       "percent",
     ])
   }
-  if ("timingVariabilityStdDev" in session && session.timingVariabilityStdDev) {
+  if (
+    "timingVariabilityStdDev" in session &&
+    typeof session.timingVariabilityStdDev === "number"
+  ) {
     resultRows.push([
       "Timing Variability",
       session.timingVariabilityStdDev,

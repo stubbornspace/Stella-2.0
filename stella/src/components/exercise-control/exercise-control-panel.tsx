@@ -17,6 +17,8 @@ import {
   loadRerunExerciseSetup,
   savePendingExerciseRun,
 } from "@/lib/exercise-runtime/session-storage"
+import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
+import { EYE_PONG_TARGET_COUNT } from "@/lib/exercise-runtime/eye-pong"
 import { cn } from "@/lib/utils"
 import type { ExerciseSession, ExerciseType, SessionStatus } from "@/types"
 import type {
@@ -108,7 +110,7 @@ function AudioSettings({
           audioMode === "silent"
             ? "Select Music or Metronome to set a tempo."
             : isMusic
-              ? "Music speed ranges from 0.5x to 2.0x."
+              ? "Music speed ranges from 0.5x to 1.4x; effective downbeat tempo is shown."
               : "Metronome tempo ranges from 30 to 120 BPM."
         }
         label={isMusic ? "Tempo (playback speed)" : "Tempo (BPM)"}
@@ -117,7 +119,7 @@ function AudioSettings({
           <input
             className="h-2 min-w-0 flex-1 cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
             disabled={audioMode === "silent"}
-            max={isMusic ? 2 : 120}
+            max={isMusic ? 1.4 : 120}
             min={isMusic ? 0.5 : 30}
             onChange={(event) =>
               isMusic
@@ -128,11 +130,11 @@ function AudioSettings({
             type="range"
             value={isMusic ? (musicPlaybackRate ?? 1) : (tempoBpm ?? 54)}
           />
-          <output className="w-16 text-right text-sm font-medium tabular-nums">
+          <output className="w-28 text-right text-sm font-medium tabular-nums">
             {audioMode === "silent"
               ? "—"
               : isMusic
-                ? `${(musicPlaybackRate ?? 1).toFixed(1)}x`
+                ? `${(musicPlaybackRate ?? 1).toFixed(1)}x · ${Math.round(STOMP_DOWNBEAT_BPM * (musicPlaybackRate ?? 1))} BPM`
                 : `${tempoBpm ?? 54} BPM`}
           </output>
         </div>
@@ -548,10 +550,14 @@ function getSetupRows(setup: ExerciseSetup): Array<[string, string]> {
     if (setup.audioMode === "metronome" && setup.tempoBpm) {
       rows.push(["Tempo", `${setup.tempoBpm} BPM`])
     } else if (setup.audioMode === "music" && setup.musicPlaybackRate) {
-      rows.push(["Tempo", `${setup.musicPlaybackRate.toFixed(1)}x`])
+      rows.push([
+        "Tempo",
+        `${setup.musicPlaybackRate.toFixed(1)}x · ${Math.round(STOMP_DOWNBEAT_BPM * setup.musicPlaybackRate)} BPM`,
+      ])
     }
   } else if (setup.activity === "eye-pong") {
     rows.push(["Mode", setup.mode === "left-right" ? "Left / Right" : "Random"])
+    rows.push(["Targets", String(EYE_PONG_TARGET_COUNT)])
     rows.push([
       "Beat",
       setup.audioMode === "silent" ? "None" : formatSetupValue(setup.audioMode),
@@ -559,7 +565,10 @@ function getSetupRows(setup: ExerciseSetup): Array<[string, string]> {
     if (setup.audioMode === "metronome" && setup.tempoBpm) {
       rows.push(["Tempo", `${setup.tempoBpm} BPM`])
     } else if (setup.audioMode === "music" && setup.musicPlaybackRate) {
-      rows.push(["Tempo", `${setup.musicPlaybackRate.toFixed(1)}x`])
+      rows.push([
+        "Tempo",
+        `${setup.musicPlaybackRate.toFixed(1)}x · ${Math.round(STOMP_DOWNBEAT_BPM * setup.musicPlaybackRate)} BPM`,
+      ])
     }
   } else if (setup.activity === "inhibition-challenge") {
     rows.push(["Trial count", String(setup.trialCount)])
@@ -614,9 +623,7 @@ function RunningSession({
   const definition = exerciseDefinitions[run.setup.activity]
   const progress = Math.min(
     100,
-    Math.round(
-      (run.elapsedSeconds / SIMULATED_RUN_DURATION_SECONDS) * 100
-    )
+    Math.round((run.elapsedSeconds / SIMULATED_RUN_DURATION_SECONDS) * 100)
   )
 
   return (
@@ -839,8 +846,7 @@ export function ExerciseControlPanel({
           SIMULATED_RUN_DURATION_SECONDS,
           current.elapsedSeconds + 1
         )
-        const isComplete =
-          elapsedSeconds >= SIMULATED_RUN_DURATION_SECONDS
+        const isComplete = elapsedSeconds >= SIMULATED_RUN_DURATION_SECONDS
         const completedUnits = isComplete
           ? current.totalUnits
           : Math.floor(

@@ -17,6 +17,13 @@ import type {
   LetterRuntimeStat,
   SaveExerciseRunInput,
 } from "@/types/exercise-control"
+import { summarizeBeatOffsets } from "@/lib/audio/beat-metrics"
+import {
+  EYE_PONG_TARGET_COUNT,
+  getEyePongActualBpm,
+  getEyePongCompletionRate,
+  getEyePongIntervalMs,
+} from "@/lib/exercise-runtime/eye-pong"
 
 const patientStorageKey = "stella-poc-patients"
 const sessionStorageKey = "stella-poc-added-sessions"
@@ -62,8 +69,7 @@ async function apiRequest<T>(
 
   if (!response.ok) {
     const body = (await response.json().catch(() => undefined)) as
-      | { message?: string }
-      | undefined
+      { message?: string } | undefined
     throw new Error(body?.message || "Stella request failed.")
   }
 
@@ -145,17 +151,17 @@ function getSessionValue(session: ExerciseSession, key: string) {
     return `${session.itemsCompleted}/${session.itemsTotal}`
   }
 
-  if (
-    key === "tempo" &&
-    "audioMode" in session &&
-    (session.audioMode === "metronome" || session.audioMode === "music")
-  ) {
+  if (key === "tempo" && "audioMode" in session) {
     if (session.audioMode === "music" && session.musicPlaybackRate) {
       return `${session.musicPlaybackRate.toFixed(1)}x`
     }
 
     if ("tempoBpm" in session && session.tempoBpm) {
       return `${session.tempoBpm} BPM`
+    }
+
+    if ("actualBpm" in session && session.actualBpm) {
+      return `${Math.round(session.actualBpm)} BPM`
     }
   }
 
@@ -204,6 +210,10 @@ export function formatMetricValue(value: unknown, format = "text") {
   }
 
   if (format === "duration") {
+    if (value > 0 && value < 1) {
+      return "<1 min"
+    }
+
     return `${Math.round(value)} min`
   }
 
@@ -267,9 +277,13 @@ export async function getPatient(
   patientId: string
 ): Promise<Patient | undefined> {
   if (remoteAppEnabled()) {
-    return apiRequest<Patient>(`/patients/${patientId}`, { method: "GET" }, {
-      allowNotFound: true,
-    })
+    return apiRequest<Patient>(
+      `/patients/${patientId}`,
+      { method: "GET" },
+      {
+        allowNotFound: true,
+      }
+    )
   }
 
   await delay()
@@ -415,9 +429,7 @@ function computeLetterMetrics(stats: LetterRuntimeStat[]) {
       : 0
   const meanCorrectLatencyMs =
     correctHits > 0
-      ? round(
-          stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits
-        )
+      ? round(stats.reduce((sum, stat) => sum + stat.timeMs, 0) / correctHits)
       : 0
   const mean =
     correctHits > 0
@@ -444,45 +456,11 @@ function computeLetterMetrics(stats: LetterRuntimeStat[]) {
 }
 
 function computeBeatMetrics(stats: LetterRuntimeStat[], actualBpm?: number) {
-  if (!actualBpm) {
-    return {
-      onBeatAccuracyPercent: undefined,
-      timingVariabilityStdDev: undefined,
-    }
-  }
-
   const offsets = stats
     .map((stat) => stat.beatOffsetMs)
     .filter((value): value is number => typeof value === "number")
 
-  if (offsets.length === 0) {
-    return {
-      onBeatAccuracyPercent: undefined,
-      timingVariabilityStdDev: undefined,
-    }
-  }
-
-  const beatIntervalMs = (60 / actualBpm) * 1000
-  const halfInterval = beatIntervalMs / 2
-  const onBeatAccuracyPercent = round(
-    offsets.reduce((sum, beatOffsetMs) => {
-      const distanceToNearestBeat =
-        beatOffsetMs > halfInterval ? beatIntervalMs - beatOffsetMs : beatOffsetMs
-      return sum + (1 - distanceToNearestBeat / halfInterval) * 100
-    }, 0) / offsets.length
-  )
-  const meanOffset = offsets.reduce((sum, value) => sum + value, 0) / offsets.length
-  const timingVariabilityStdDev = round(
-    Math.sqrt(
-      offsets.reduce((sum, value) => sum + (value - meanOffset) ** 2, 0) /
-        offsets.length
-    )
-  )
-
-  return {
-    onBeatAccuracyPercent: clamp(onBeatAccuracyPercent, 0, 100),
-    timingVariabilityStdDev,
-  }
+  return summarizeBeatOffsets(offsets, actualBpm)
 }
 
 function buildSessionFromResult({
@@ -521,12 +499,18 @@ function buildSessionFromResult({
     return {
       ...baseSession,
       activity: "eye-pong",
+      actualBpm: result.actualBpm,
       audioMode: result.audioMode,
-      completionRatePercent: result.completionRatePercent,
+      completionRatePercent: getEyePongCompletionRate(
+        result.targetChanges,
+        result.targetCount
+      ),
+      intervalMs: getEyePongIntervalMs(result.actualBpm),
       mode: result.mode,
       musicPlaybackRate:
         result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
       pattern: result.mode === "left-right" ? "horizontal" : "mixed",
+      targetCount: result.targetCount,
       targetChanges: result.targetChanges,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
     }
@@ -579,13 +563,16 @@ function buildSessionFromResult({
       latencyVariabilityStdDev: metrics.latencyVariabilityStdDev,
       meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
       musicPlaybackRate:
-        result.audioMode === "music" ? letterSetup.musicPlaybackRate : undefined,
+        result.audioMode === "music"
+          ? letterSetup.musicPlaybackRate
+          : undefined,
       onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
       tempoBpm:
         result.audioMode === "metronome" ? letterSetup.tempoBpm : undefined,
       timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
       totalAttempts: metrics.totalAttempts,
-      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+      wordLength:
+        result.contentMode === "words" ? result.wordLength : undefined,
     }
   }
 
@@ -605,11 +592,16 @@ function buildSessionFromResult({
       itemsTotal,
       meanCorrectLatencyMs: metrics.meanCorrectLatencyMs,
       musicPlaybackRate:
-        result.audioMode === "music" ? letterSetup.musicPlaybackRate : undefined,
+        result.audioMode === "music"
+          ? letterSetup.musicPlaybackRate
+          : undefined,
+      onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
       tempoBpm:
         result.audioMode === "metronome" ? letterSetup.tempoBpm : undefined,
+      timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
       totalAttempts: metrics.totalAttempts,
-      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+      wordLength:
+        result.contentMode === "words" ? result.wordLength : undefined,
     }
   }
 
@@ -650,7 +642,7 @@ export async function saveExerciseRun({
     ? `runtime-${patientId}-${setup.activity}-${runId}`
     : `mock-${patientId}-${setup.activity}-${Date.now()}`
   const sessionDate = new Date().toISOString()
-  const durationMinutes = Math.max(1, round(elapsedSeconds / 60, 1))
+  const durationMinutes = Math.max(0.02, round(elapsedSeconds / 60, 2))
 
   if (result) {
     const session = buildSessionFromResult({
@@ -694,7 +686,12 @@ export async function saveExerciseRun({
     const totalAttempts = completed + incorrectAttempts
     const accuracyPercent =
       totalAttempts === 0 ? 0 : round((completed / totalAttempts) * 100)
-    const firstAttemptSuccessRatePercent = clamp(accuracyPercent - 4, 0, 100)
+    const firstAttemptHits = Math.max(
+      0,
+      completed - Math.min(incorrectAttempts, completed)
+    )
+    const firstAttemptSuccessRatePercent =
+      completed === 0 ? 0 : round((firstAttemptHits / completed) * 100)
     const attemptsPerMinute = round(totalAttempts / durationMinutes, 1)
 
     if (setup.activity === "letter-target") {
@@ -750,14 +747,22 @@ export async function saveExerciseRun({
       }
     }
   } else if (setup.activity === "eye-pong") {
+    const actualBpm = getEyePongActualBpm(
+      setup.audioMode,
+      setup.tempoBpm,
+      setup.musicPlaybackRate
+    )
     session = {
       ...baseSession,
       activity: "eye-pong",
+      actualBpm,
       mode: setup.mode,
       pattern: setup.mode === "left-right" ? "horizontal" : "mixed",
+      targetCount: EYE_PONG_TARGET_COUNT,
       targetChanges: completedUnits,
-      completionRatePercent: clamp((completedUnits / 20) * 100, 0, 100),
+      completionRatePercent: getEyePongCompletionRate(completedUnits),
       audioMode: setup.audioMode,
+      intervalMs: getEyePongIntervalMs(actualBpm),
       tempoBpm: setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
       musicPlaybackRate:
         setup.audioMode === "music" ? setup.musicPlaybackRate : undefined,

@@ -203,11 +203,12 @@ function buildConfigRecommendation(
       return {
         exerciseLabel,
         exerciseType,
-        label: session && "mode" in session && session.mode === "random"
-          ? "Mode"
-          : "Tempo",
+        label:
+          session && "mode" in session && session.mode === "random"
+            ? "Mode"
+            : "Cadence",
         reason:
-          "Lowering visual variability should help make completion more consistent.",
+          "Eye Pong completion reflects delivered targets rather than measured gaze performance; use a simpler pattern or cadence when the protocol needs to be easier to follow.",
         targetMetric,
         value:
           session && "mode" in session && session.mode === "random"
