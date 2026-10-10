@@ -196,16 +196,10 @@ function computeLetterMetrics(stats) {
 }
 
 function computeBeatMetrics(stats, actualBpm) {
-  if (!actualBpm) {
-    return {
-      onBeatAccuracyPercent: undefined,
-      timingVariabilityStdDev: undefined,
-    };
-  }
-
-  const offsets = stats
-    .map((stat) => stat.beatOffsetMs)
-    .filter((value) => typeof value === "number");
+  const timedStats = stats.filter(
+    (stat) => typeof stat.beatOffsetMs === "number",
+  );
+  const offsets = timedStats.map((stat) => stat.beatOffsetMs);
 
   if (offsets.length === 0) {
     return {
@@ -214,25 +208,49 @@ function computeBeatMetrics(stats, actualBpm) {
     };
   }
 
-  const beatIntervalMs = (60 / actualBpm) * 1000;
-  const halfInterval = beatIntervalMs / 2;
-  const onBeatAccuracyPercent = round(
-    offsets.reduce((sum, beatOffsetMs) => {
-      const distanceToNearestBeat =
-        beatOffsetMs > halfInterval ? beatIntervalMs - beatOffsetMs : beatOffsetMs;
-      return sum + (1 - distanceToNearestBeat / halfInterval) * 100;
-    }, 0) / offsets.length
+  const usesExactBeatMap = timedStats.every(
+    (stat) => stat.beatOffsetBasis === "nearest-beat",
   );
-  const meanOffset = offsets.reduce((sum, value) => sum + value, 0) / offsets.length;
+
+  if (!usesExactBeatMap && !actualBpm) {
+    return {
+      onBeatAccuracyPercent: undefined,
+      timingVariabilityStdDev: undefined,
+    };
+  }
+
+  const signedOffsets = usesExactBeatMap
+    ? offsets
+    : offsets.map((offset) => {
+        const beatIntervalMs = (60 / actualBpm) * 1000;
+        const normalizedOffset =
+          ((offset % beatIntervalMs) + beatIntervalMs) % beatIntervalMs;
+        return normalizedOffset > beatIntervalMs / 2
+          ? normalizedOffset - beatIntervalMs
+          : normalizedOffset;
+      });
+  const toleranceMs = usesExactBeatMap
+    ? 150
+    : Math.min(150, (60 / actualBpm) * 500);
+  const onBeatHits = signedOffsets.filter(
+    (offset) => Math.abs(offset) <= toleranceMs,
+  ).length;
+  const meanOffset =
+    signedOffsets.reduce((sum, value) => sum + value, 0) /
+    signedOffsets.length;
   const timingVariabilityStdDev = round(
     Math.sqrt(
-      offsets.reduce((sum, value) => sum + (value - meanOffset) ** 2, 0) /
-        offsets.length
-    )
+      signedOffsets.reduce(
+        (sum, value) => sum + (value - meanOffset) ** 2,
+        0,
+      ) / signedOffsets.length,
+    ),
   );
 
   return {
-    onBeatAccuracyPercent: clamp(onBeatAccuracyPercent, 0, 100),
+    onBeatAccuracyPercent: round(
+      (onBeatHits / signedOffsets.length) * 100,
+    ),
     timingVariabilityStdDev,
   };
 }
@@ -277,6 +295,127 @@ function buildSessionFromResult({
       pattern: result.mode === "left-right" ? "horizontal" : "mixed",
       targetChanges: result.targetChanges,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
+    };
+  }
+
+  if (
+    result.activity === "inhibition-challenge" &&
+    setup.activity === "inhibition-challenge"
+  ) {
+    const closedTrials = result.trials.filter((trial) => trial.windowClosed);
+    const goTrials = closedTrials.filter((trial) => trial.cue === "go");
+    const noGoTrials = closedTrials.filter((trial) => trial.cue === "no-go");
+    const correctGoTrials = goTrials.filter(
+      (trial) => trial.outcome === "correct",
+    );
+    const correctNoGoTrials = noGoTrials.filter(
+      (trial) => trial.outcome === "correct",
+    );
+    const goLatencies = correctGoTrials.flatMap((trial) => {
+      const correctPress = trial.presses.find((press) => press.correct);
+      return correctPress ? [correctPress.offsetMs - trial.cueOffsetMs] : [];
+    });
+    const goAccuracyPercent =
+      goTrials.length > 0
+        ? round((correctGoTrials.length / goTrials.length) * 100)
+        : 0;
+
+    return {
+      ...baseSession,
+      activity: "inhibition-challenge",
+      attemptsPerMinute:
+        durationMinutes > 0
+          ? round(closedTrials.length / durationMinutes, 1)
+          : 0,
+      cueSpeedBpm: result.cueSpeedBpm,
+      goAccuracyPercent,
+      meanGoLatencyMs:
+        goLatencies.length > 0
+          ? round(
+              goLatencies.reduce((sum, latency) => sum + latency, 0) /
+                goLatencies.length,
+            )
+          : 0,
+      missedGoRatePercent:
+        goTrials.length > 0
+          ? round(
+              (goTrials.filter((trial) => trial.outcome === "missed").length /
+                goTrials.length) *
+                100,
+            )
+          : 0,
+      noGoAccuracyPercent:
+        noGoTrials.length > 0
+          ? round((correctNoGoTrials.length / noGoTrials.length) * 100)
+          : 0,
+      responseWindowMs: result.responseWindowMs,
+      rulePreset: result.rulePreset,
+      summary: `${goAccuracyPercent}% Go accuracy across ${closedTrials.length} completed trials.`,
+      trialCount: result.trialCount,
+    };
+  }
+
+  if (
+    result.activity === "motor-sequence-builder" &&
+    setup.activity === "motor-sequence-builder"
+  ) {
+    const startedSequences = result.sequences;
+    const completedSequences = startedSequences.filter(
+      (sequence) => sequence.completedOffsetMs != null,
+    );
+    const firstAttemptSequences = completedSequences.filter((sequence) =>
+      sequence.presses.every((press) => press.correct),
+    );
+    const completionTimes = completedSequences.flatMap((sequence) =>
+      sequence.completedOffsetMs != null &&
+      sequence.reproductionStartedOffsetMs != null
+        ? [sequence.completedOffsetMs - sequence.reproductionStartedOffsetMs]
+        : [],
+    );
+    const sequenceCompletionRatePercent =
+      startedSequences.length > 0
+        ? round((completedSequences.length / startedSequences.length) * 100)
+        : 0;
+
+    return {
+      ...baseSession,
+      activity: "motor-sequence-builder",
+      attemptsPerMinute:
+        durationMinutes > 0
+          ? round(
+              startedSequences.reduce(
+                (sum, sequence) => sum + sequence.presses.length,
+                0,
+              ) / durationMinutes,
+              1,
+            )
+          : 0,
+      audioMode: result.audioMode,
+      contentType: result.contentType,
+      firstAttemptSequenceAccuracyPercent:
+        startedSequences.length > 0
+          ? round(
+              (firstAttemptSequences.length / startedSequences.length) * 100,
+            )
+          : 0,
+      longestCompletedSequence:
+        completedSequences.length > 0
+          ? Math.max(
+              ...completedSequences.map((sequence) => sequence.keyIds.length),
+            )
+          : 0,
+      meanCompletionTimeMs:
+        completionTimes.length > 0
+          ? round(
+              completionTimes.reduce((sum, duration) => sum + duration, 0) /
+                completionTimes.length,
+            )
+          : 0,
+      presentationSpeedBpm: result.presentationSpeedBpm,
+      sequenceCompletionRatePercent,
+      sequenceCount: result.sequenceCount,
+      sequenceLength: result.sequenceLength,
+      summary: `${completedSequences.length} of ${startedSequences.length} started sequences completed.`,
     };
   }
 

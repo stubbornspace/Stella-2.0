@@ -27,7 +27,7 @@ export function KeyboardLayout({
   beatFlashIntervalMs,
 }: {
   keyStates?: Record<number, KeyState>
-  onKeyClick?: (id: number) => void
+  onKeyClick?: (id: number, inputTimeMs?: number) => void
   disabled?: boolean
   beatFlashIntervalMs?: number
 }) {
@@ -49,7 +49,7 @@ export function KeyboardLayout({
       }
 
       event.preventDefault()
-      onKeyClick(keyId)
+      onKeyClick(keyId, event.timeStamp)
     }
 
     window.addEventListener("keydown", handleKeyDown)

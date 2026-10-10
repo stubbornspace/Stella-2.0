@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef } from "react"
 
 import { getAudioContext } from "@/lib/audio/sound-manager"
 import { stompBeatMap } from "@/lib/audio/stomp-beat-map"
+import {
+  contextTimeToPerformanceTime,
+  performanceTimeToContextTime,
+  type NearestBeatTiming,
+} from "@/lib/audio/audio-clock"
 
 interface UseMusicOptions {
   beatMode?: "beats" | "downbeats"
@@ -46,6 +51,8 @@ export function useMusic({
   const mutedRef = useRef(false)
   const nextBeatIndexRef = useRef(0)
   const loopOffsetRef = useRef(0)
+  const audioStartTimeRef = useRef<number | null>(null)
+  const loopDurationRef = useRef(stompBeatMap.duration)
 
   useEffect(() => {
     onBeatRef.current = onBeat
@@ -91,15 +98,17 @@ export function useMusic({
     source.loop = true
     source.playbackRate.value = playbackRateRef.current
     source.connect(gain)
-    source.start()
+    const audioStartTime = context.currentTime + 0.05
+    source.start(audioStartTime)
     sourceRef.current = source
 
     const beatTimes =
       beatModeRef.current === "beats"
         ? stompBeatMap.beats
         : stompBeatMap.downbeats
-    const duration = stompBeatMap.duration / playbackRateRef.current
-    const audioStartTime = context.currentTime
+    loopDurationRef.current = buffer.duration
+    const duration = loopDurationRef.current / playbackRateRef.current
+    audioStartTimeRef.current = audioStartTime
     const lookAheadSeconds = 0.15
 
     nextBeatIndexRef.current = 0
@@ -113,7 +122,7 @@ export function useMusic({
 
       const now = getAudioContext().currentTime
       const elapsed = now - audioStartTime
-      const currentLoop = Math.floor(elapsed / duration)
+      const currentLoop = Math.max(0, Math.floor(elapsed / duration))
 
       if (currentLoop > loopOffsetRef.current) {
         loopOffsetRef.current = currentLoop
@@ -136,8 +145,11 @@ export function useMusic({
           continue
         }
 
-        const delayMs = (beatAbsoluteTime - now) * 1000
-        const scheduledTimeMs = performance.now() + delayMs
+        const scheduledTimeMs = contextTimeToPerformanceTime(
+          context,
+          beatAbsoluteTime
+        )
+        const delayMs = scheduledTimeMs - performance.now()
         window.setTimeout(
           () => {
             onBeatRef.current?.(scheduledTimeMs)
@@ -151,6 +163,60 @@ export function useMusic({
     timerIdRef.current = window.setInterval(tick, 25)
   }, [])
 
+  const getNearestBeat = useCallback(
+    (inputTimeMs = performance.now()): NearestBeatTiming | null => {
+      const audioStartTime = audioStartTimeRef.current
+
+      if (!isRunningRef.current || audioStartTime == null) {
+        return null
+      }
+
+      const context = getAudioContext()
+      const inputContextTime = performanceTimeToContextTime(
+        context,
+        inputTimeMs
+      )
+      const playbackRate = playbackRateRef.current
+      const duration = loopDurationRef.current / playbackRate
+      const beatTimes =
+        beatModeRef.current === "beats"
+          ? stompBeatMap.beats
+          : stompBeatMap.downbeats
+      const elapsed = inputContextTime - audioStartTime
+      const centerLoop = Math.max(0, Math.floor(elapsed / duration))
+      let nearest: NearestBeatTiming | null = null
+
+      for (
+        let loopIndex = Math.max(0, centerLoop - 1);
+        loopIndex <= centerLoop + 1;
+        loopIndex += 1
+      ) {
+        const loopBase = audioStartTime + loopIndex * duration
+
+        beatTimes.forEach((beatTime, beatIndex) => {
+          const beatContextTime = loopBase + beatTime / playbackRate
+          const scheduledTimeMs = contextTimeToPerformanceTime(
+            context,
+            beatContextTime
+          )
+          const offsetMs = inputTimeMs - scheduledTimeMs
+
+          if (!nearest || Math.abs(offsetMs) < Math.abs(nearest.offsetMs)) {
+            nearest = {
+              beatIndex: loopIndex * beatTimes.length + beatIndex,
+              loopIndex,
+              offsetMs,
+              scheduledTimeMs,
+            }
+          }
+        })
+      }
+
+      return nearest
+    },
+    []
+  )
+
   const stop = useCallback(() => {
     if (timerIdRef.current) {
       window.clearInterval(timerIdRef.current)
@@ -158,6 +224,7 @@ export function useMusic({
     }
 
     isRunningRef.current = false
+    audioStartTimeRef.current = null
 
     if (sourceRef.current) {
       try {
@@ -193,5 +260,5 @@ export function useMusic({
 
   useEffect(() => () => stop(), [stop])
 
-  return { setMuted, start, stop }
+  return { getNearestBeat, setMuted, start, stop }
 }

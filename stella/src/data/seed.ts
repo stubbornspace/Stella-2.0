@@ -796,7 +796,6 @@ function makeLetterFind(
 function makeEyePong(
   patientId: string,
   sessionIndex: number,
-  sessionCount: number,
   activityIndex: number,
   startOffset: number,
   seed: number
@@ -1007,7 +1006,6 @@ function makeSession(
       return makeEyePong(
         patientId,
         sessionIndex,
-        sessionCount,
         activityIndex,
         startOffset,
         seed

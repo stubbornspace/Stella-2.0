@@ -5,6 +5,10 @@ import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { useSaveExerciseRun, usePatient } from "@/hooks/use-stella"
 import { Button } from "@/components/ui/button"
 import { KeyboardLayout } from "@/components/exercise-runtime/keyboard-layout"
+import {
+  InhibitionChallengeRuntime,
+  MotorSequenceBuilderRuntime,
+} from "@/components/exercise-runtime/advanced-keyboard-runtimes"
 import { getPromptById } from "@/content/prompt-library"
 import {
   getAvailableWordLengths,
@@ -47,11 +51,15 @@ import type {
   ExerciseRunResult,
   EyePongCueEvent,
   EyePongRunResult,
+  InhibitionChallengeRunResult,
+  InhibitionChallengeSetup,
   KeyboardRuntimeExerciseType,
   LetterFindRunResult,
   LetterFindSetup,
   LetterTargetRunResult,
   LetterTargetSetup,
+  MotorSequenceBuilderRunResult,
+  MotorSequenceBuilderSetup,
 } from "@/types/exercise-control"
 
 function promptAudio(id: string) {
@@ -292,6 +300,10 @@ function getTotalUnits(setup: ExerciseSetup) {
         : setup.numberOfWords
     case "eye-pong":
       return EYE_PONG_TARGET_COUNT
+    case "inhibition-challenge":
+      return setup.trialCount
+    case "motor-sequence-builder":
+      return setup.sequenceCount
   }
 }
 
@@ -370,39 +382,125 @@ function FinishedRuntimeSession({
           },
           { label: "Targets Presented", value: String(result.targetChanges) },
         ]
-      : (() => {
-          const metrics = summarizeLetterStats(result.stats)
-          return [
-            { label: "Status", value: completed ? "Completed" : "Ended Early" },
-            {
-              label: "Duration",
-              value: formatElapsedTime(result.elapsedSeconds),
-            },
-            { label: "Progress", value: `${completedUnits} of ${totalUnits}` },
-            {
-              label: "Content",
-              value:
-                result.contentMode === "letters"
-                  ? "Letters"
-                  : `${result.wordLength ?? "?"}-letter words`,
-            },
-            { label: "Attempts", value: String(metrics.totalAttempts) },
-            {
-              label: "First-Try Accuracy",
-              value: `${metrics.firstAttemptRate}%`,
-            },
-            { label: "Avg Latency", value: `${metrics.averageLatencyMs} ms` },
-            {
-              label: "Beat",
-              value:
-                result.audioMode === "silent"
-                  ? "None"
-                  : result.audioMode === "music"
-                    ? `Music${result.actualBpm ? ` · ${Math.round(result.actualBpm)} BPM` : ""}`
-                    : `Metronome${result.actualBpm ? ` · ${Math.round(result.actualBpm)} BPM` : ""}`,
-            },
-          ]
-        })()
+      : result.activity === "inhibition-challenge"
+        ? (() => {
+            const closedTrials = result.trials.filter(
+              (trial) => trial.windowClosed
+            )
+            const goTrials = closedTrials.filter((trial) => trial.cue === "go")
+            const noGoTrials = closedTrials.filter(
+              (trial) => trial.cue === "no-go"
+            )
+            const goCorrect = goTrials.filter(
+              (trial) => trial.outcome === "correct"
+            ).length
+            const noGoCorrect = noGoTrials.filter(
+              (trial) => trial.outcome === "correct"
+            ).length
+            return [
+              {
+                label: "Status",
+                value: completed ? "Completed" : "Ended Early",
+              },
+              {
+                label: "Duration",
+                value: formatElapsedTime(result.elapsedSeconds),
+              },
+              {
+                label: "Progress",
+                value: `${completedUnits} of ${totalUnits}`,
+              },
+              {
+                label: "Go Accuracy",
+                value: `${goTrials.length ? Math.round((goCorrect / goTrials.length) * 100) : 0}%`,
+              },
+              {
+                label: "No-Go Accuracy",
+                value: `${noGoTrials.length ? Math.round((noGoCorrect / noGoTrials.length) * 100) : 0}%`,
+              },
+              {
+                label: "Response Window",
+                value: `${result.responseWindowMs} ms`,
+              },
+            ]
+          })()
+        : result.activity === "motor-sequence-builder"
+          ? (() => {
+              const completedSequences = result.sequences.filter(
+                (sequence) => sequence.completedOffsetMs != null
+              )
+              const firstTry = completedSequences.filter((sequence) =>
+                sequence.presses.every((press) => press.correct)
+              ).length
+              return [
+                {
+                  label: "Status",
+                  value: completed ? "Completed" : "Ended Early",
+                },
+                {
+                  label: "Duration",
+                  value: formatElapsedTime(result.elapsedSeconds),
+                },
+                {
+                  label: "Progress",
+                  value: `${completedUnits} of ${totalUnits}`,
+                },
+                {
+                  label: "Sequence Length",
+                  value: String(result.sequenceLength),
+                },
+                {
+                  label: "First-Try Accuracy",
+                  value: `${result.sequences.length ? Math.round((firstTry / result.sequences.length) * 100) : 0}%`,
+                },
+                {
+                  label: "Presentation Speed",
+                  value: `${result.presentationSpeedBpm} BPM`,
+                },
+              ]
+            })()
+          : (() => {
+              const metrics = summarizeLetterStats(result.stats)
+              return [
+                {
+                  label: "Status",
+                  value: completed ? "Completed" : "Ended Early",
+                },
+                {
+                  label: "Duration",
+                  value: formatElapsedTime(result.elapsedSeconds),
+                },
+                {
+                  label: "Progress",
+                  value: `${completedUnits} of ${totalUnits}`,
+                },
+                {
+                  label: "Content",
+                  value:
+                    result.contentMode === "letters"
+                      ? "Letters"
+                      : `${result.wordLength ?? "?"}-letter words`,
+                },
+                { label: "Attempts", value: String(metrics.totalAttempts) },
+                {
+                  label: "First-Try Accuracy",
+                  value: `${metrics.firstAttemptRate}%`,
+                },
+                {
+                  label: "Avg Latency",
+                  value: `${metrics.averageLatencyMs} ms`,
+                },
+                {
+                  label: "Beat",
+                  value:
+                    result.audioMode === "silent"
+                      ? "None"
+                      : result.audioMode === "music"
+                        ? `Music${result.actualBpm ? ` · ${Math.round(result.actualBpm)} BPM` : ""}`
+                        : `Metronome${result.actualBpm ? ` · ${Math.round(result.actualBpm)} BPM` : ""}`,
+                },
+              ]
+            })()
 
   return (
     <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1440px] flex-col gap-4 px-6 py-6 md:px-8 md:py-8">
@@ -1122,10 +1220,7 @@ export function KeyboardRuntimePage({
   }, [])
 
   const handleProgress = useCallback(
-    (
-      result: LetterTargetRunResult | LetterFindRunResult,
-      nextCompletedUnits: number
-    ) => {
+    (result: ExerciseRunResult, nextCompletedUnits: number) => {
       resultRef.current = result
       setCompletedUnits(nextCompletedUnits)
     },
@@ -1246,6 +1341,29 @@ export function KeyboardRuntimePage({
     onToast("Eye Pong could not start. Check this browser's audio permissions.")
   }, [onToast])
 
+  const handleAdvancedComplete = useCallback(
+    (
+      result: InhibitionChallengeRunResult | MotorSequenceBuilderRunResult,
+      nextCompletedUnits: number
+    ) => {
+      resultRef.current = result
+      setCompletedUnits(nextCompletedUnits)
+      void finishAndSave("completed", result, nextCompletedUnits)
+    },
+    [finishAndSave]
+  )
+
+  const handleAdvancedRunError = useCallback(() => {
+    activeStartTimeRef.current = null
+    resultRef.current = null
+    setCompletedUnits(0)
+    setElapsedSeconds(0)
+    setStatus("ready")
+    onToast(
+      "The exercise could not start. Check this browser's audio permissions."
+    )
+  }, [onToast])
+
   const handleStopEarly = useCallback(() => {
     if (!pendingRun || status !== "running") {
       return
@@ -1271,7 +1389,10 @@ export function KeyboardRuntimePage({
           targetCount: EYE_PONG_TARGET_COUNT,
           targetChanges: completedUnits,
         }
-      } else {
+      } else if (
+        pendingRun.setup.activity === "letter-target" ||
+        pendingRun.setup.activity === "letter-find"
+      ) {
         const letterSetup = pendingRun.setup as
           LetterTargetSetup | LetterFindSetup
         result = {
@@ -1288,13 +1409,44 @@ export function KeyboardRuntimePage({
           stats: [],
           wordLength: letterSetup.wordLength,
         }
+      } else if (pendingRun.setup.activity === "inhibition-challenge") {
+        const inhibitionSetup = pendingRun.setup as InhibitionChallengeSetup
+        result = {
+          activity: "inhibition-challenge",
+          cueSpeedBpm: inhibitionSetup.cueSpeedBpm,
+          elapsedSeconds,
+          responseWindowMs: inhibitionSetup.responseWindowMs,
+          rulePreset: inhibitionSetup.rulePreset,
+          trialCount: inhibitionSetup.trialCount,
+          trials: [],
+        }
+      } else {
+        const motorSetup = pendingRun.setup as MotorSequenceBuilderSetup
+        result = {
+          activity: "motor-sequence-builder",
+          audioMode: motorSetup.audioMode,
+          contentType: motorSetup.contentType,
+          elapsedSeconds,
+          presentationSpeedBpm: motorSetup.presentationSpeedBpm,
+          sequenceCount: motorSetup.sequenceCount,
+          sequenceLength: motorSetup.sequenceLength,
+          sequences: [],
+        }
       }
     }
 
     resultRef.current = result
     if (result) {
       const finalCompletedUnits =
-        result.activity === "eye-pong" ? result.targetChanges : completedUnits
+        result.activity === "eye-pong"
+          ? result.targetChanges
+          : result.activity === "inhibition-challenge"
+            ? result.trials.filter((trial) => trial.windowClosed).length
+            : result.activity === "motor-sequence-builder"
+              ? result.sequences.filter(
+                  (sequence) => sequence.completedOffsetMs != null
+                ).length
+              : completedUnits
       void finishAndSave("ended-early", result, finalCompletedUnits)
     }
   }, [completedUnits, elapsedSeconds, finishAndSave, pendingRun, status])
@@ -1440,6 +1592,26 @@ export function KeyboardRuntimePage({
             onProgress={handleEyePongProgress}
             onRunComplete={handleEyePongComplete}
             onRunError={handleEyePongRunError}
+            setup={pendingRun.setup}
+            startSignal={startSignal}
+          />
+        ) : pendingRun.setup.activity === "inhibition-challenge" ? (
+          <InhibitionChallengeRuntime
+            active={status === "preparing" || status === "running"}
+            onPlayingChange={handlePlayingChange}
+            onProgress={handleProgress}
+            onRunComplete={handleAdvancedComplete}
+            onRunError={handleAdvancedRunError}
+            setup={pendingRun.setup}
+            startSignal={startSignal}
+          />
+        ) : pendingRun.setup.activity === "motor-sequence-builder" ? (
+          <MotorSequenceBuilderRuntime
+            active={status === "preparing" || status === "running"}
+            onPlayingChange={handlePlayingChange}
+            onProgress={handleProgress}
+            onRunComplete={handleAdvancedComplete}
+            onRunError={handleAdvancedRunError}
             setup={pendingRun.setup}
             startSignal={startSignal}
           />

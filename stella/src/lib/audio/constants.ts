@@ -34,8 +34,4 @@ export const LETTER_TO_KEY = Object.fromEntries(
 export const LETTER_KEYS = Object.keys(KEY_TO_LETTER).map(Number)
 
 export type KeyState =
-  | "idle"
-  | "waiting"
-  | "beat"
-  | "correct"
-  | "incorrect"
+  "idle" | "waiting" | "beat" | "correct" | "incorrect" | "no-go" | "wait"

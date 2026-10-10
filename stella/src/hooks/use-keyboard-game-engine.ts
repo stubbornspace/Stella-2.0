@@ -120,6 +120,7 @@ export function useKeyboardGameEngine({
   }
 
   const {
+    getNearestBeat: getNearestMetronomeBeat,
     setMuted: setMetronomeMuted,
     start: startMetronome,
     stop: stopMetronome,
@@ -130,6 +131,7 @@ export function useKeyboardGameEngine({
   })
 
   const {
+    getNearestBeat: getNearestMusicBeat,
     setMuted: setMusicMuted,
     start: startMusicBeat,
     stop: stopMusicBeat,
@@ -291,7 +293,7 @@ export function useKeyboardGameEngine({
   )
 
   const handleKeyClick = useCallback(
-    async (id: number) => {
+    async (id: number, inputTimeMs = performance.now()) => {
       if (
         !playingRef.current ||
         !acceptingInputRef.current ||
@@ -302,16 +304,23 @@ export function useKeyboardGameEngine({
 
       const targetKey = sequenceRef.current[indexRef.current]
       const pressedLetter = KEY_TO_LETTER[id]
-      const now = performance.now()
-      const beatOffsetMs =
-        beatSourceRef.current === "silent" || lastBeatRef.current === 0
-          ? undefined
-          : Math.max(0, Math.round(now - lastBeatRef.current))
+      const now = inputTimeMs
+      const nearestBeat =
+        beatSourceRef.current === "music"
+          ? getNearestMusicBeat(inputTimeMs)
+          : beatSourceRef.current === "metronome"
+            ? getNearestMetronomeBeat(inputTimeMs)
+            : null
+      const beatOffsetMs = nearestBeat
+        ? Math.round(nearestBeat.offsetMs)
+        : undefined
       const attemptEvent: AttemptEvent = {
+        beatIndex: nearestBeat?.beatIndex,
         beatOffsetMs,
+        beatOffsetBasis: nearestBeat ? "nearest-beat" : undefined,
         correct: id === targetKey,
         pressedLetter,
-        timestamp: new Date().toISOString(),
+        timestamp: scheduledWallClockTimestamp(inputTimeMs),
       }
 
       attemptEventsRef.current = [...attemptEventsRef.current, attemptEvent]
@@ -364,7 +373,9 @@ export function useKeyboardGameEngine({
       const stat: LetterStat = {
         attemptEvents: [...attemptEventsRef.current],
         attempts: attemptsRef.current + 1,
+        beatIndex: nearestBeat?.beatIndex,
         beatOffsetMs,
+        beatOffsetBasis: nearestBeat ? "nearest-beat" : undefined,
         completedAt: attemptEvent.timestamp,
         letter,
         targetStartedAt: targetStartedAtRef.current,
@@ -421,7 +432,14 @@ export function useKeyboardGameEngine({
       }
       startHintTimer()
     },
-    [setBeatMuted, startBeat, startHintTimer, stopBeat]
+    [
+      getNearestMetronomeBeat,
+      getNearestMusicBeat,
+      setBeatMuted,
+      startBeat,
+      startHintTimer,
+      stopBeat,
+    ]
   )
 
   const stopGame = useCallback(() => {

@@ -1,5 +1,7 @@
 # Stella Keyboard Integration Options
 
+For the short four-option decision summary, see [keyboard-deployment-options-summary.md](./keyboard-deployment-options-summary.md).
+
 Status: summary for discussion, 2026-10-09. Compares two ways to connect the clinician app to the Stella keyboard. Detailed requirements for the chosen direction are in [keyboard-integration-architecture.md](./keyboard-integration-architecture.md); the message and data contract shared by both options is in [exercise-integration-data-model.md](./exercise-integration-data-model.md).
 
 Both options meet the same requirements:

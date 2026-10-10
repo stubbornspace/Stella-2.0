@@ -46,3 +46,29 @@ export function summarizeBeatOffsets(offsets: number[], actualBpm?: number) {
     timingVariabilityStdDev,
   }
 }
+
+export function summarizeSignedBeatOffsets(offsets: number[]) {
+  if (offsets.length === 0) {
+    return {
+      onBeatAccuracyPercent: undefined,
+      timingVariabilityStdDev: undefined,
+    }
+  }
+
+  const onBeatHits = offsets.filter(
+    (offset) => Math.abs(offset) <= ON_BEAT_TOLERANCE_MS
+  ).length
+  const meanOffset =
+    offsets.reduce((sum, value) => sum + value, 0) / offsets.length
+  const timingVariabilityStdDev = round(
+    Math.sqrt(
+      offsets.reduce((sum, value) => sum + (value - meanOffset) ** 2, 0) /
+        offsets.length
+    )
+  )
+
+  return {
+    onBeatAccuracyPercent: round((onBeatHits / offsets.length) * 100),
+    timingVariabilityStdDev,
+  }
+}

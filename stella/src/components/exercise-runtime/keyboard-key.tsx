@@ -1,3 +1,5 @@
+import { useRef, type MouseEvent, type PointerEvent } from "react"
+
 import { cn } from "@/lib/utils"
 import type { KeyState } from "@/lib/audio/constants"
 
@@ -6,7 +8,7 @@ interface KeyboardKeyProps {
   letter?: string
   className?: string
   state?: KeyState
-  onClick?: (id: number) => void
+  onClick?: (id: number, inputTimeMs?: number) => void
   disabled?: boolean
   beatFlashIntervalMs?: number
 }
@@ -21,10 +23,23 @@ export function KeyboardKey({
   beatFlashIntervalMs,
 }: KeyboardKeyProps) {
   const isBlank = letter === ""
+  const handledPointerRef = useRef(false)
 
-  const handleClick = () => {
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (!disabled && !isBlank && onClick) {
-      onClick(id)
+      handledPointerRef.current = true
+      onClick(id, event.timeStamp)
+    }
+  }
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (handledPointerRef.current) {
+      handledPointerRef.current = false
+      return
+    }
+
+    if (!disabled && !isBlank && onClick) {
+      onClick(id, event.timeStamp)
     }
   }
 
@@ -42,6 +57,10 @@ export function KeyboardKey({
         return "bg-[#00ff00] animate-[flash_0.5s_ease-in-out]"
       case "incorrect":
         return "bg-[#ff4444] animate-[flash_0.5s_ease-in-out]"
+      case "no-go":
+        return "bg-[#ef4444]"
+      case "wait":
+        return "bg-[#eab308]"
       default:
         return "bg-[#1b4ee6]"
     }
@@ -94,6 +113,7 @@ export function KeyboardKey({
       )}
       disabled={disabled}
       onClick={handleClick}
+      onPointerDown={handlePointerDown}
       type="button"
     >
       {content}

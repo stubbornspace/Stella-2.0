@@ -10,6 +10,20 @@ const exerciseTypes = [
   "motor-sequence-builder",
 ];
 
+const EYE_PONG_TARGET_COUNT = 20;
+const EYE_PONG_DEFAULT_VISUAL_BPM = 54;
+const STOMP_DOWNBEAT_BPM = 83.35;
+const KEY_TO_LETTER = {
+  1: "Q", 2: "W", 3: "E", 4: "R", 5: "T", 6: "Y", 7: "U", 8: "I",
+  9: "O", 10: "P", 11: "A", 12: "S", 13: "D", 14: "F", 15: "G",
+  16: "H", 17: "J", 18: "K", 19: "L", 22: "Z", 23: "X", 24: "C",
+  25: "V", 26: "B", 27: "N", 28: "M",
+};
+const LETTER_KEYS = Object.keys(KEY_TO_LETTER).map(Number);
+const LETTER_TO_KEY = Object.fromEntries(
+  Object.entries(KEY_TO_LETTER).map(([key, letter]) => [letter, Number(key)])
+);
+
 const seedPatients = [
   {
     id: "p-1021",
@@ -446,37 +460,108 @@ function makeLetterFind(
 function makeEyePong(
   patientId,
   sessionIndex,
-  sessionCount,
   activityIndex,
   startOffset,
   seed
 ) {
-  const point = metricPoint(seed + 4, sessionIndex, patientId, sessionCount);
+  const base = baseSession(
+    patientId,
+    "eye-pong",
+    sessionIndex,
+    activityIndex,
+    startOffset
+  );
   const audioMode =
     sessionIndex % 3 === 0
       ? "silent"
       : sessionIndex % 2 === 0
         ? "music"
         : "metronome";
-  const patterns = ["horizontal", "vertical", "diagonal", "mixed"];
+  const mode = sessionIndex % 2 === 0 ? "left-right" : "random";
+  const tempoBpm =
+    audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined;
+  const musicPlaybackRate =
+    audioMode === "music"
+      ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4]
+      : undefined;
+  const actualBpm =
+    audioMode === "music"
+      ? STOMP_DOWNBEAT_BPM * (musicPlaybackRate ?? 1)
+      : (tempoBpm ?? EYE_PONG_DEFAULT_VISUAL_BPM);
+  const intervalMs = Math.round(60000 / actualBpm);
+  const targetChanges =
+    base.status === "completed"
+      ? EYE_PONG_TARGET_COUNT
+      : 12 + ((seed + sessionIndex) % 7);
+  const firstCueOffsetMs =
+    audioMode === "music"
+      ? Math.round((0.3715 / (musicPlaybackRate ?? 1)) * 1000)
+      : audioMode === "metronome"
+        ? 50
+        : 0;
+  const delays = [-3, 2, 5, -1, 3, 1];
+  const cueEvents = Array.from({ length: targetChanges }, (_, cueIndex) => {
+    const keyId =
+      mode === "left-right"
+        ? [LETTER_TO_KEY.A, LETTER_TO_KEY.L][cueIndex % 2]
+        : LETTER_KEYS[
+            (seed + sessionIndex * 3 + cueIndex * 7) % LETTER_KEYS.length
+          ];
+    const scheduledOffsetMs = firstCueOffsetMs + cueIndex * intervalMs;
+    const presentationDelayMs = delays[(cueIndex + sessionIndex) % delays.length];
+
+    return {
+      sequence: cueIndex + 1,
+      keyId,
+      letter: KEY_TO_LETTER[keyId],
+      scheduledOffsetMs,
+      presentedOffsetMs: scheduledOffsetMs + presentationDelayMs,
+      presentationDelayMs,
+    };
+  });
+  const targetHoldMs = Math.min(
+    600,
+    Math.max(180, Math.round(intervalMs * 0.7))
+  );
+  const elapsedSeconds = Math.max(
+    1,
+    Math.ceil(
+      ((cueEvents.at(-1)?.presentedOffsetMs ?? 0) + targetHoldMs) / 1000
+    )
+  );
+  const durationMinutes = round(elapsedSeconds / 60, 2);
+  const completionRatePercent = Math.min(
+    100,
+    Math.round((targetChanges / EYE_PONG_TARGET_COUNT) * 100)
+  );
 
   return {
-    ...baseSession(
-      patientId,
-      "eye-pong",
-      sessionIndex,
-      activityIndex,
-      startOffset
-    ),
-    mode: sessionIndex % 2 === 0 ? "left-right" : "random",
-    pattern: patterns[sessionIndex % patterns.length],
-    targetChanges: point.changes,
-    completionRatePercent: point.completion,
+    ...base,
+    mode,
+    pattern: mode === "left-right" ? "horizontal" : "mixed",
+    targetCount: EYE_PONG_TARGET_COUNT,
+    targetChanges,
+    completionRatePercent,
     audioMode,
-    tempoBpm:
-      audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined,
-    musicPlaybackRate:
-      audioMode === "music" ? [0.8, 1, 1.2, 1.5][sessionIndex % 4] : undefined,
+    actualBpm,
+    tempoBpm,
+    musicPlaybackRate,
+    intervalMs,
+    activeEngagementTimeMinutes: durationMinutes,
+    totalSessionDurationMinutes: durationMinutes,
+    attemptsPerMinute: undefined,
+    pauseBreakCount: 0,
+    rawEventPayload: {
+      activity: "eye-pong",
+      actualBpm,
+      audioMode,
+      completionRatePercent,
+      cueEvents,
+      elapsedSeconds,
+      mode,
+      targetCount: EYE_PONG_TARGET_COUNT,
+      targetChanges,
+    },
   };
 }
 
@@ -576,7 +661,6 @@ function makeSession(
       return makeEyePong(
         patientId,
         sessionIndex,
-        sessionCount,
         activityIndex,
         startOffset,
         seed

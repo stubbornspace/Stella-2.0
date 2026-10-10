@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef } from "react"
 
 import { getAudioContext } from "@/lib/audio/sound-manager"
+import {
+  contextTimeToPerformanceTime,
+  performanceTimeToContextTime,
+  type NearestBeatTiming,
+} from "@/lib/audio/audio-clock"
 
 interface UseMetronomeOptions {
   bpm?: number
@@ -21,6 +26,7 @@ export function useMetronome({
   const bpmRef = useRef(bpm)
   const volumeRef = useRef(volume)
   const mutedRef = useRef(false)
+  const firstBeatTimeRef = useRef<number | null>(null)
 
   useEffect(() => {
     onBeatRef.current = onBeat
@@ -46,6 +52,7 @@ export function useMetronome({
     }
 
     nextNoteTimeRef.current = context.currentTime + 0.05
+    firstBeatTimeRef.current = nextNoteTimeRef.current
     isRunningRef.current = true
 
     const masterGain = context.createGain()
@@ -82,8 +89,8 @@ export function useMetronome({
         oscillator.start(time)
         oscillator.stop(time + 0.05)
 
-        const delay = (time - audioContext.currentTime) * 1000
-        const scheduledTimeMs = performance.now() + delay
+        const scheduledTimeMs = contextTimeToPerformanceTime(audioContext, time)
+        const delay = scheduledTimeMs - performance.now()
         window.setTimeout(
           () => {
             onBeatRef.current?.(scheduledTimeMs)
@@ -98,6 +105,39 @@ export function useMetronome({
     timerIdRef.current = window.setInterval(tick, 25)
   }, [])
 
+  const getNearestBeat = useCallback(
+    (inputTimeMs = performance.now()): NearestBeatTiming | null => {
+      const firstBeatTime = firstBeatTimeRef.current
+
+      if (!isRunningRef.current || firstBeatTime == null) {
+        return null
+      }
+
+      const context = getAudioContext()
+      const inputContextTime = performanceTimeToContextTime(
+        context,
+        inputTimeMs
+      )
+      const beatInterval = 60 / bpmRef.current
+      const beatIndex = Math.max(
+        0,
+        Math.round((inputContextTime - firstBeatTime) / beatInterval)
+      )
+      const beatContextTime = firstBeatTime + beatIndex * beatInterval
+      const scheduledTimeMs = contextTimeToPerformanceTime(
+        context,
+        beatContextTime
+      )
+
+      return {
+        beatIndex,
+        offsetMs: inputTimeMs - scheduledTimeMs,
+        scheduledTimeMs,
+      }
+    },
+    []
+  )
+
   const stop = useCallback(() => {
     if (timerIdRef.current) {
       window.clearInterval(timerIdRef.current)
@@ -105,6 +145,7 @@ export function useMetronome({
     }
 
     isRunningRef.current = false
+    firstBeatTimeRef.current = null
 
     if (masterGainRef.current) {
       masterGainRef.current.disconnect()
@@ -127,5 +168,5 @@ export function useMetronome({
 
   useEffect(() => () => stop(), [stop])
 
-  return { setMuted, start, stop }
+  return { getNearestBeat, setMuted, start, stop }
 }

@@ -49,6 +49,24 @@ Implemented runtime path:
 - Records each cue's key, scheduled offset, presentation offset, and presentation delay.
 - Reports protocol completion and targets presented without making eye-tracking or gaze claims.
 
+### Inhibition Challenge
+
+- Runs explicit shuffled Go, No-Go and Wait trial plans from the selected preset.
+- Uses green, red and yellow key cues with the configured response window.
+- Records every in-window keypress, response timing, cue type and trial outcome.
+- Keeps wrong-key Go trials active so the patient can still make a correct response.
+- Scores No-Go and Wait success only after a closed response window with no keypress.
+- Saves accurate closed-trial progress and the open trial when a run ends early.
+
+### Motor Sequence Builder
+
+- Presents letter or word sequences one key at a time at the configured speed.
+- Supports 2–5 letter random sequences and 3–5 letter words from the audio library.
+- Locks input during demonstration, then records ordered reproduction attempts.
+- Keeps the expected sequence position active after an incorrect keypress.
+- Supports metronome, music and silent presentation modes.
+- Saves presentation timestamps, reproduction timing and partial sequences when stopped early.
+
 ## Audio Status
 
 Audio has been regenerated for consistency and is organized as:
@@ -63,6 +81,9 @@ Notes:
 - Polly generation was set up to use `us-east-1` and Joanna generative for synthesized assets.
 - The keyboard runtime also uses the legacy success sound restored from the older POC for correct hits.
 - The old typed-letter display bar above the keyboard has been removed to better match the physical device.
+- Music mode currently uses the curated `stomp.mp3` asset and its pre-analyzed pulse map.
+- Live music and metronome input timing is mapped through the Web Audio output clock when the
+  browser exposes it, with an output-latency fallback for older browsers.
 
 ## Persistence Behavior
 
@@ -112,9 +133,15 @@ Current runtime config is loaded from `stella/public/runtime-config.json`.
 
 ## Result Integrity
 
-- Live letter results retain per-target attempt events, timestamps, latency, and beat offset.
-- On-beat accuracy uses a ±150 ms nearest-beat window; timing variability uses signed
-  nearest-beat offsets.
+- Live letter results retain per-target attempt events, input timestamps, analyzed beat index,
+  latency, and signed nearest-beat offset.
+- Pointer and physical-key timing uses the originating input event timestamp rather than the
+  later React handler execution time.
+- On-beat accuracy uses a ±150 ms nearest-beat window. New live sessions compare directly with
+  the exact analyzed music pulse or scheduled metronome beat; historical and seeded sessions
+  retain their prior constant-tempo normalization.
+- Eye Pong continues to report music-paced cue presentation timing only. It does not report
+  patient beat-hit accuracy because its keyboard is intentionally non-interactive.
 - Letter Target seed metrics are derived from deterministic event-shaped stats so accuracy,
   first-attempt success, throughput, duration, and beat reporting remain internally consistent.
 - Letter Target seed word lengths use the same exact-length values as live runtime sessions.
@@ -124,6 +151,10 @@ Current runtime config is loaded from `stella/public/runtime-config.json`.
   same cue-event shape, supported patterns, cadence, and sub-minute duration model as the live
   runtime.
 - Letter Find seed word lengths now use the same exact-length values as live runtime sessions.
+- Inhibition Challenge accuracy and Go latency are derived from captured closed trials rather
+  than simulated completion progress.
+- Motor Sequence Builder completion, first-attempt accuracy and completion time are derived
+  from captured presentation and reproduction events.
 
 ## Open Follow-Up Ideas
 
@@ -139,6 +170,7 @@ These are not necessarily bugs, but likely next polish items:
 - `stella/src/App.tsx`
 - `stella/src/components/exercise-control/exercise-control-panel.tsx`
 - `stella/src/components/exercise-runtime/keyboard-runtime-page.tsx`
+- `stella/src/components/exercise-runtime/advanced-keyboard-runtimes.tsx`
 - `stella/src/components/exercise-runtime/keyboard-layout.tsx`
 - `stella/src/components/exercise-runtime/keyboard-key.tsx`
 - `stella/src/config/exercise-control.ts`

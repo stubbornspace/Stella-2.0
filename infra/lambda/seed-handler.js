@@ -30,12 +30,27 @@ async function putIfMissing(tableName, item, keyCondition) {
   }
 }
 
+async function putSeedSession(item) {
+  await dynamo.send(
+    new PutItemCommand({
+      TableName: sessionsTableName,
+      Item: marshall(item, {
+        removeUndefinedValues: true,
+      }),
+    })
+  );
+}
+
 exports.handler = async (event) => {
   if (event.RequestType === "Delete") {
     return {
       PhysicalResourceId: "StellaSeedData",
     };
   }
+
+  const overwriteEyePongSeedSessions =
+    event.ResourceProperties?.overwriteEyePongSeedSessions === "true" ||
+    event.ResourceProperties?.overwriteEyePongSeedSessions === true;
 
   for (const patient of seedPatients) {
     await putIfMissing(
@@ -49,15 +64,21 @@ exports.handler = async (event) => {
   }
 
   for (const session of seedSessions) {
-    await putIfMissing(
-      sessionsTableName,
-      {
-        ...session,
-        patientId: session.patientId,
-        sessionKey: `SESSION#${session.sessionDate}#${session.sessionId}`,
-      },
-      "attribute_not_exists(patientId) AND attribute_not_exists(sessionKey)"
-    );
+    const item = {
+      ...session,
+      patientId: session.patientId,
+      sessionKey: `SESSION#${session.sessionDate}#${session.sessionId}`,
+    };
+
+    if (overwriteEyePongSeedSessions && session.activity === "eye-pong") {
+      await putSeedSession(item);
+    } else {
+      await putIfMissing(
+        sessionsTableName,
+        item,
+        "attribute_not_exists(patientId) AND attribute_not_exists(sessionKey)"
+      );
+    }
   }
 
   return {

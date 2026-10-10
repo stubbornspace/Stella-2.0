@@ -255,7 +255,8 @@ export class StellaportalStack extends cdk.Stack {
 
     const seedResource = new cdk.CustomResource(this, "SeedResource", {
       properties: {
-        seedVersion: "2026-09-17-analysis-poc",
+        overwriteEyePongSeedSessions: true,
+        seedVersion: "2026-10-10-eye-pong-integrity",
       },
       serviceToken: seedProvider.serviceToken,
     })

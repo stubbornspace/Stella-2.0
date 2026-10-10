@@ -17,7 +17,10 @@ import type {
   LetterRuntimeStat,
   SaveExerciseRunInput,
 } from "@/types/exercise-control"
-import { summarizeBeatOffsets } from "@/lib/audio/beat-metrics"
+import {
+  summarizeBeatOffsets,
+  summarizeSignedBeatOffsets,
+} from "@/lib/audio/beat-metrics"
 import {
   EYE_PONG_TARGET_COUNT,
   getEyePongActualBpm,
@@ -460,6 +463,15 @@ function computeBeatMetrics(stats: LetterRuntimeStat[], actualBpm?: number) {
     .map((stat) => stat.beatOffsetMs)
     .filter((value): value is number => typeof value === "number")
 
+  if (
+    offsets.length > 0 &&
+    stats
+      .filter((stat) => typeof stat.beatOffsetMs === "number")
+      .every((stat) => stat.beatOffsetBasis === "nearest-beat")
+  ) {
+    return summarizeSignedBeatOffsets(offsets)
+  }
+
   return summarizeBeatOffsets(offsets, actualBpm)
 }
 
@@ -516,6 +528,138 @@ function buildSessionFromResult({
     }
   }
 
+  if (
+    result.activity === "inhibition-challenge" &&
+    setup.activity === "inhibition-challenge"
+  ) {
+    const closedTrials = result.trials.filter((trial) => trial.windowClosed)
+    const goTrials = closedTrials.filter((trial) => trial.cue === "go")
+    const noGoTrials = closedTrials.filter((trial) => trial.cue === "no-go")
+    const correctGoTrials = goTrials.filter(
+      (trial) => trial.outcome === "correct"
+    )
+    const correctNoGoTrials = noGoTrials.filter(
+      (trial) => trial.outcome === "correct"
+    )
+    const goLatencies = correctGoTrials.flatMap((trial) => {
+      const correctPress = trial.presses.find((press) => press.correct)
+      return correctPress ? [correctPress.offsetMs - trial.cueOffsetMs] : []
+    })
+    const goAccuracyPercent =
+      goTrials.length > 0
+        ? round((correctGoTrials.length / goTrials.length) * 100)
+        : 0
+
+    return {
+      ...baseSession,
+      activity: "inhibition-challenge",
+      attemptsPerMinute:
+        durationMinutes > 0
+          ? round(closedTrials.length / durationMinutes, 1)
+          : 0,
+      cueSpeedBpm: result.cueSpeedBpm,
+      goAccuracyPercent,
+      meanGoLatencyMs:
+        goLatencies.length > 0
+          ? round(
+              goLatencies.reduce((sum, latency) => sum + latency, 0) /
+                goLatencies.length
+            )
+          : 0,
+      missedGoRatePercent:
+        goTrials.length > 0
+          ? round(
+              (goTrials.filter((trial) => trial.outcome === "missed").length /
+                goTrials.length) *
+                100
+            )
+          : 0,
+      noGoAccuracyPercent:
+        noGoTrials.length > 0
+          ? round((correctNoGoTrials.length / noGoTrials.length) * 100)
+          : 0,
+      responseWindowMs: result.responseWindowMs,
+      rulePreset: result.rulePreset,
+      summary: `${goAccuracyPercent}% Go accuracy across ${closedTrials.length} completed trials.`,
+      trialCount: result.trialCount,
+    }
+  }
+
+  if (
+    result.activity === "motor-sequence-builder" &&
+    setup.activity === "motor-sequence-builder"
+  ) {
+    const startedSequences = result.sequences
+    const completedSequences = startedSequences.filter(
+      (sequence) => sequence.completedOffsetMs != null
+    )
+    const firstAttemptSequences = completedSequences.filter((sequence) =>
+      sequence.presses.every((press) => press.correct)
+    )
+    const completionTimes = completedSequences.flatMap((sequence) =>
+      sequence.completedOffsetMs != null &&
+      sequence.reproductionStartedOffsetMs != null
+        ? [sequence.completedOffsetMs - sequence.reproductionStartedOffsetMs]
+        : []
+    )
+    const sequenceCompletionRatePercent =
+      startedSequences.length > 0
+        ? round((completedSequences.length / startedSequences.length) * 100)
+        : 0
+
+    return {
+      ...baseSession,
+      activity: "motor-sequence-builder",
+      attemptsPerMinute:
+        durationMinutes > 0
+          ? round(
+              startedSequences.reduce(
+                (sum, sequence) => sum + sequence.presses.length,
+                0
+              ) / durationMinutes,
+              1
+            )
+          : 0,
+      audioMode: result.audioMode,
+      contentType: result.contentType,
+      firstAttemptSequenceAccuracyPercent:
+        startedSequences.length > 0
+          ? round(
+              (firstAttemptSequences.length / startedSequences.length) * 100
+            )
+          : 0,
+      longestCompletedSequence:
+        completedSequences.length > 0
+          ? Math.max(
+              ...completedSequences.map((sequence) => sequence.keyIds.length)
+            )
+          : 0,
+      meanCompletionTimeMs:
+        completionTimes.length > 0
+          ? round(
+              completionTimes.reduce((sum, duration) => sum + duration, 0) /
+                completionTimes.length
+            )
+          : 0,
+      presentationSpeedBpm: result.presentationSpeedBpm,
+      sequenceCompletionRatePercent,
+      sequenceCount: result.sequenceCount,
+      sequenceLength: result.sequenceLength,
+      summary: `${completedSequences.length} of ${startedSequences.length} started sequences completed.`,
+    }
+  }
+
+  if (
+    result.activity !== "letter-target" &&
+    result.activity !== "letter-find"
+  ) {
+    return {
+      ...baseSession,
+      activity: setup.activity,
+      summary: "Captured exercise session.",
+    } as ExerciseSession
+  }
+
   const letterSetup =
     result.activity === "letter-target" && setup.activity === "letter-target"
       ? setup
@@ -523,7 +667,7 @@ function buildSessionFromResult({
         ? setup
         : null
 
-  if (!letterSetup || result.activity === "eye-pong") {
+  if (!letterSetup) {
     return {
       ...baseSession,
       activity: setup.activity,

@@ -356,7 +356,7 @@ function InhibitionChallengeSettings({
         <input
           className={inputClassName}
           max={100}
-          min={1}
+          min={10}
           onChange={(event) =>
             onChange({ ...setup, trialCount: Number(event.target.value) })
           }
@@ -426,6 +426,11 @@ function MotorSequenceBuilderSettings({
               ...setup,
               contentType: event.target
                 .value as MotorSequenceBuilderSetup["contentType"],
+              sequenceLength:
+                event.target.value === "word-sequence" &&
+                setup.sequenceLength < 3
+                  ? 3
+                  : setup.sequenceLength,
             })
           }
           value={setup.contentType}
@@ -445,7 +450,10 @@ function MotorSequenceBuilderSettings({
           }
           value={setup.sequenceLength}
         >
-          {[2, 3, 4, 5].map((length) => (
+          {(setup.contentType === "word-sequence"
+            ? [3, 4, 5]
+            : [2, 3, 4, 5]
+          ).map((length) => (
             <option key={length} value={length}>
               {length}
             </option>

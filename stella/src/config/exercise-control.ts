@@ -36,12 +36,12 @@ export const exerciseControlDefinitions: ExerciseControlDefinition[] = [
   },
   {
     id: "inhibition-challenge",
-    availability: "available",
+    availability: "coming-soon",
     setupSummary: "Configure Go, No-Go and Wait response-control trials.",
   },
   {
     id: "motor-sequence-builder",
-    availability: "available",
+    availability: "coming-soon",
     setupSummary:
       "Configure presented letter or word sequences for guided reproduction.",
   },
@@ -108,6 +108,8 @@ const keyboardRuntimeExerciseTypes: KeyboardRuntimeExerciseType[] = [
   "letter-target",
   "letter-find",
   "eye-pong",
+  "inhibition-challenge",
+  "motor-sequence-builder",
 ]
 
 export function getDefaultExerciseSetup(
@@ -128,5 +130,7 @@ export function isRunnableExercise(
 export function supportsKeyboardRuntime(
   activity: RunnableExerciseType
 ): activity is KeyboardRuntimeExerciseType {
-  return keyboardRuntimeExerciseTypes.includes(activity as KeyboardRuntimeExerciseType)
+  return keyboardRuntimeExerciseTypes.includes(
+    activity as KeyboardRuntimeExerciseType
+  )
 }

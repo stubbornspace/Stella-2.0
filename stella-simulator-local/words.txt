@@ -1,0 +1,84 @@
+# Stella — prescribed word list
+#
+# Used by Letter Target / Letter Find ("Words" mode) and Motor Sequence
+# Builder ("Words" mode). One word per line, letters A-Z only (the keyboard
+# has no spaces, hyphens, or punctuation keys) — sim/content.js upper-cases
+# everything automatically, so lower/mixed case here is fine too.
+#
+# Lines starting with # are comments and blank lines are ignored.
+#
+# TO UPDATE THE LIST: edit this file and reload the app — sim/content.js
+# loads it at startup, no build step needed. Then regenerate the spoken
+# clips for any new words:
+#   powershell -ExecutionPolicy Bypass -File tools\gen_tts.ps1
+#
+# Keep words short, common, and recognizable to a young child. A mix of
+# lengths is useful — it's what the Word Length filter (0-5 / 5-10 / 10+)
+# and Motor Sequence Builder's length progression (2 -> 5 letters) filter on.
+
+# --- 3 letters ---
+CAT
+DOG
+SUN
+CUP
+PIG
+COW
+BUS
+HAT
+BEE
+TOY
+RUN
+HOP
+RED
+BOX
+BAT
+
+# --- 4 letters ---
+BALL
+FISH
+BIRD
+CAKE
+MILK
+BOOK
+STAR
+MOON
+DUCK
+FROG
+BEAR
+JUMP
+PLAY
+HOME
+TREE
+
+# --- 5 letters ---
+HORSE
+HAPPY
+SMILE
+APPLE
+HOUSE
+MUSIC
+SWING
+CANDY
+SHEEP
+TIGER
+CLOWN
+JUICE
+
+# --- 6 letters ---
+RABBIT
+KITTEN
+YELLOW
+PURPLE
+FLOWER
+FRIEND
+MONKEY
+COOKIE
+
+# --- 7-8 letters ---
+CHICKEN
+RAINBOW
+ELEPHANT
+DINOSAUR
+
+# --- a fun long one (populates the "10+" word-length bucket) ---
+CATERPILLAR

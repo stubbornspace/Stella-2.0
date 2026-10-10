@@ -11,7 +11,11 @@ export type RunnableExerciseType = Extract<
 
 export type KeyboardRuntimeExerciseType = Extract<
   RunnableExerciseType,
-  "letter-target" | "letter-find" | "eye-pong"
+  | "letter-target"
+  | "letter-find"
+  | "eye-pong"
+  | "inhibition-challenge"
+  | "motor-sequence-builder"
 >
 
 export type ExerciseAudioMode = "silent" | "metronome" | "music"
@@ -77,14 +81,18 @@ export interface LetterRuntimeStat {
   letter: string
   attempts: number
   timeMs: number
+  beatIndex?: number
   beatOffsetMs?: number
+  beatOffsetBasis?: "previous-beat" | "nearest-beat"
   targetStartedAt?: string
   completedAt?: string
   attemptEvents?: Array<{
     pressedLetter: string
     correct: boolean
     timestamp: string
+    beatIndex?: number
     beatOffsetMs?: number
+    beatOffsetBasis?: "previous-beat" | "nearest-beat"
   }>
 }
 
@@ -133,8 +141,77 @@ export interface EyePongRunResult extends BaseExerciseRunResult {
   targetChanges: number
 }
 
+export type InhibitionCue = "go" | "no-go" | "wait"
+
+export interface InhibitionPressEvent {
+  keyId: number
+  letter: string
+  offsetMs: number
+  correct: boolean
+}
+
+export interface InhibitionTrialEvent {
+  trialIndex: number
+  cue: InhibitionCue
+  targetKeyId: number
+  targetLetter: string
+  cueOffsetMs: number
+  windowEndOffsetMs?: number
+  windowClosed: boolean
+  outcome: "correct" | "incorrect" | "missed" | "stopped"
+  presses: InhibitionPressEvent[]
+}
+
+export interface InhibitionChallengeRunResult extends BaseExerciseRunResult {
+  activity: "inhibition-challenge"
+  trialCount: number
+  rulePreset: InhibitionChallengeSetup["rulePreset"]
+  responseWindowMs: number
+  cueSpeedBpm: number
+  trials: InhibitionTrialEvent[]
+}
+
+export interface MotorSequencePresentationEvent {
+  keyId: number
+  letter: string
+  offsetMs: number
+}
+
+export interface MotorSequencePressEvent {
+  keyId: number
+  letter: string
+  expectedKeyId: number
+  expectedLetter: string
+  offsetMs: number
+  correct: boolean
+}
+
+export interface MotorSequenceEvent {
+  sequenceIndex: number
+  text: string
+  keyIds: number[]
+  presentations: MotorSequencePresentationEvent[]
+  reproductionStartedOffsetMs?: number
+  presses: MotorSequencePressEvent[]
+  completedOffsetMs?: number
+}
+
+export interface MotorSequenceBuilderRunResult extends BaseExerciseRunResult {
+  activity: "motor-sequence-builder"
+  audioMode: ExerciseAudioMode
+  contentType: MotorSequenceBuilderSetup["contentType"]
+  sequenceLength: number
+  sequenceCount: number
+  presentationSpeedBpm: number
+  sequences: MotorSequenceEvent[]
+}
+
 export type ExerciseRunResult =
-  LetterTargetRunResult | LetterFindRunResult | EyePongRunResult
+  | LetterTargetRunResult
+  | LetterFindRunResult
+  | EyePongRunResult
+  | InhibitionChallengeRunResult
+  | MotorSequenceBuilderRunResult
 
 export interface SaveExerciseRunInput {
   patientId: string
