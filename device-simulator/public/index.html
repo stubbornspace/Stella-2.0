@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f6f2" />
+    <title>Stella Keyboard Simulator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Device simulator</p>
+          <h1>Stella Keyboard</h1>
+          <p class="subtitle">
+            This page represents the Pi and its physical keyboard. Configure and
+            start sessions from Stella, then press keys here.
+          </p>
+        </div>
+        <div class="connection" id="connection" data-connected="false">
+          <span class="connection-dot"></span>
+          <span id="connectionLabel">Connecting</span>
+        </div>
+      </header>
+
+      <section class="status-grid" aria-label="Device status">
+        <article class="status-card">
+          <span>Exercise</span>
+          <strong id="activity">Waiting for Stella</strong>
+        </article>
+        <article class="status-card">
+          <span>Phase</span>
+          <strong id="phase">Idle</strong>
+        </article>
+        <article class="status-card">
+          <span>Progress</span>
+          <strong id="progress">0 of 0</strong>
+        </article>
+        <article class="status-card">
+          <span>Session</span>
+          <strong id="session">None</strong>
+        </article>
+      </section>
+
+      <section class="prompt-panel" aria-live="polite">
+        <p class="eyebrow">Current prompt</p>
+        <h2 id="prompt">Waiting for an exercise configuration.</h2>
+        <p id="configSummary">The keyboard is ready to connect.</p>
+      </section>
+
+      <section class="keyboard-panel">
+        <div class="keyboard-heading">
+          <div>
+            <p class="eyebrow">Patient surface</p>
+            <h2>Press a key</h2>
+          </div>
+          <p>Clicks simulate physical switch input on the Pi.</p>
+        </div>
+        <div class="keyboard" id="keyboard" aria-label="Simulated keyboard"></div>
+      </section>
+
+      <section class="event-panel">
+        <div>
+          <p class="eyebrow">Latest device event</p>
+          <h2 id="latestEvent">No events yet</h2>
+        </div>
+        <a href="/api/results" target="_blank">Open latest raw result</a>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -10,7 +10,8 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "audio:generate": "node scripts/audio/generate-polly-audio.mjs"
+    "audio:manifest": "node scripts/audio/build-word-audio-manifest.mjs",
+    "audio:generate": "npm run audio:manifest && node scripts/audio/generate-polly-audio.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

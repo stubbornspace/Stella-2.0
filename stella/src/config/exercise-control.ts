@@ -1,5 +1,8 @@
 import type { ExerciseType } from "@/types"
-import { getAvailableWordLengths } from "@/content/word-library"
+import {
+  getAvailableWordRanges,
+  normalizeWordLengthRange,
+} from "@/content/word-library"
 import type {
   ExerciseSetup,
   EyePongSetup,
@@ -36,18 +39,18 @@ export const exerciseControlDefinitions: ExerciseControlDefinition[] = [
   },
   {
     id: "inhibition-challenge",
-    availability: "coming-soon",
+    availability: "available",
     setupSummary: "Configure Go, No-Go and Wait response-control trials.",
   },
   {
     id: "motor-sequence-builder",
-    availability: "coming-soon",
+    availability: "available",
     setupSummary:
       "Configure presented letter or word sequences for guided reproduction.",
   },
 ]
 
-const defaultWordLength = getAvailableWordLengths()[0] ?? "3"
+const defaultWordLength = getAvailableWordRanges()[0] ?? "0-5"
 
 const defaultLetterTargetSetup: LetterTargetSetup = {
   activity: "letter-target",
@@ -141,7 +144,18 @@ export function normalizeExerciseSetup(setup: ExerciseSetup): ExerciseSetup {
   } as ExerciseSetup
 
   if (normalized.activity === "letter-find") {
-    return { ...normalized, keyLabels: "letters" }
+    return {
+      ...normalized,
+      keyLabels: "letters",
+      wordLength: normalizeWordLengthRange(normalized.wordLength),
+    }
+  }
+
+  if (normalized.activity === "letter-target") {
+    return {
+      ...normalized,
+      wordLength: normalizeWordLengthRange(normalized.wordLength),
+    }
   }
 
   return normalized

@@ -1,10 +1,12 @@
-export type WordLengthBucket = "3" | "4" | "5" | "6" | "7" | "8"
+export type WordLengthBucket =
+  "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11+"
+export type WordLengthRange = "0-5" | "5-10" | "10+"
 export type WordAvailability = "available" | "planned"
 
 export interface WordEntry {
   key: string
   label: string
-  length: WordLengthBucket
+  length: number
   availability: WordAvailability
   tags?: string[]
   audio: {
@@ -13,7 +15,19 @@ export interface WordEntry {
   }
 }
 
-export const wordLengthBuckets: WordLengthBucket[] = ["3", "4", "5", "6", "7", "8"]
+export const wordLengthBuckets: WordLengthBucket[] = [
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11+",
+]
+
+export const wordLengthRanges: WordLengthRange[] = ["0-5", "5-10", "10+"]
 
 const wordBuckets: Record<WordLengthBucket, string[]> = {
   "3": [
@@ -148,6 +162,72 @@ const wordBuckets: Record<WordLengthBucket, string[]> = {
     "snowfall",
     "painting",
   ],
+  "9": [
+    "adventure",
+    "blueberry",
+    "breakfast",
+    "butterfly",
+    "chocolate",
+    "classroom",
+    "crocodile",
+    "evergreen",
+    "fireworks",
+    "jellyfish",
+    "landscape",
+    "moonlight",
+    "pineapple",
+    "rainstorm",
+    "spaceship",
+    "sunflower",
+    "telephone",
+    "wonderful",
+    "storybook",
+    "seashells",
+  ],
+  "10": [
+    "basketball",
+    "blackboard",
+    "campground",
+    "flashlight",
+    "friendship",
+    "greenhouse",
+    "headphones",
+    "lighthouse",
+    "motorcycle",
+    "playground",
+    "skateboard",
+    "strawberry",
+    "toothbrush",
+    "watermelon",
+    "wristwatch",
+    "everything",
+    "houseplant",
+    "peppermint",
+    "paintbrush",
+    "sunglasses",
+  ],
+  "11+": [
+    "caterpillar",
+    "celebration",
+    "countryside",
+    "electricity",
+    "grandfather",
+    "grandmother",
+    "imagination",
+    "information",
+    "mathematics",
+    "masterpiece",
+    "kindergarten",
+    "refrigerator",
+    "snowboarding",
+    "thunderstorm",
+    "encyclopedia",
+    "constellation",
+    "communication",
+    "rollercoaster",
+    "transportation",
+    "environment",
+  ],
 }
 
 const audioPath = (segment: "words" | "prompts/spell-word", file: string) =>
@@ -161,7 +241,7 @@ export const wordLibrary: WordEntry[] = wordLengthBuckets.flatMap((length) =>
   wordBuckets[length].map((word) => ({
     key: word,
     label: toLabel(word),
-    length,
+    length: word.length,
     availability: "available",
     audio: {
       word: audioPath("words", word),
@@ -170,16 +250,60 @@ export const wordLibrary: WordEntry[] = wordLengthBuckets.flatMap((length) =>
   }))
 )
 
-export function getAvailableWordLengths() {
-  return wordLengthBuckets.filter((bucket) =>
+export function wordIsInRange(word: WordEntry, range: WordLengthRange) {
+  if (range === "0-5") {
+    return word.length <= 5
+  }
+
+  if (range === "5-10") {
+    return word.length >= 6 && word.length <= 10
+  }
+
+  return word.length > 10
+}
+
+export function normalizeWordLengthRange(
+  value: string | undefined
+): WordLengthRange {
+  if (value === "0-5" || value === "5-10" || value === "10+") {
+    return value
+  }
+
+  const exactLength = Number(value)
+  if (Number.isFinite(exactLength)) {
+    if (exactLength <= 5) {
+      return "0-5"
+    }
+    if (exactLength <= 10) {
+      return "5-10"
+    }
+    return "10+"
+  }
+
+  return "0-5"
+}
+
+export function getAvailableWordRanges() {
+  return wordLengthRanges.filter((range) =>
     wordLibrary.some(
-      (word) => word.availability === "available" && word.length === bucket
+      (word) => word.availability === "available" && wordIsInRange(word, range)
     )
   )
 }
 
-export function getWordsByLength(
-  length: WordLengthBucket,
+export function getWordsByRange(
+  range: WordLengthRange,
+  options?: { availableOnly?: boolean }
+) {
+  return wordLibrary.filter(
+    (word) =>
+      wordIsInRange(word, range) &&
+      (!options?.availableOnly || word.availability === "available")
+  )
+}
+
+export function getWordsByExactLength(
+  length: number,
   options?: { availableOnly?: boolean }
 ) {
   return wordLibrary.filter(
@@ -189,8 +313,7 @@ export function getWordsByLength(
   )
 }
 
-export function pickRandomWords(length: WordLengthBucket, count: number) {
-  const pool = getWordsByLength(length, { availableOnly: true })
+function pickRandomWordsFromPool(pool: WordEntry[], count: number) {
   const available = [...pool]
   const result: WordEntry[] = []
 
@@ -207,4 +330,18 @@ export function pickRandomWords(length: WordLengthBucket, count: number) {
   }
 
   return result
+}
+
+export function pickRandomWords(range: WordLengthRange, count: number) {
+  return pickRandomWordsFromPool(
+    getWordsByRange(range, { availableOnly: true }),
+    count
+  )
+}
+
+export function pickRandomWordsByExactLength(length: number, count: number) {
+  return pickRandomWordsFromPool(
+    getWordsByExactLength(length, { availableOnly: true }),
+    count
+  )
 }

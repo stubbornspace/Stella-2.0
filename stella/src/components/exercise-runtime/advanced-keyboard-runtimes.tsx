@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { KeyboardLayout } from "@/components/exercise-runtime/keyboard-layout"
-import { pickRandomWords } from "@/content/word-library"
+import { wordLibrary } from "@/content/word-library"
 import { useMetronome } from "@/hooks/use-metronome"
 import { useMusic } from "@/hooks/use-music"
-import {
-  KEY_TO_LETTER,
-  LETTER_KEYS,
-  LETTER_TO_KEY,
-  type KeyState,
-} from "@/lib/audio/constants"
+import { type KeyState } from "@/lib/audio/constants"
 import { preloadAudio, playAudio, unlockAudio } from "@/lib/audio/sound-manager"
 import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
+import {
+  getKeyboardLetters,
+  getKeyToLetterMap,
+  getLetterKeys,
+  getLetterToKeyMap,
+} from "@/lib/exercise-runtime/keyboard-map"
 import type {
   InhibitionChallengeRunResult,
   InhibitionChallengeSetup,
@@ -20,12 +21,16 @@ import type {
   MotorSequenceBuilderRunResult,
   MotorSequenceBuilderSetup,
   MotorSequenceEvent,
-  WordLength,
 } from "@/types/exercise-control"
 
 const CORRECT_SOUND = "/audio/effects/legacy-correct.mp3"
 const GREAT_JOB_PROMPT = "/audio/prompts/shared/great-job-01.mp3"
-const READY_PROMPT = "/audio/prompts/shared/ready-to-play-01.mp3"
+const INHIBITION_INSTRUCTIONS_PROMPT =
+  "/audio/prompts/inhibition-challenge/green-means-hit-red-means-stop-yellow-means-wait-01.mp3"
+const MOTOR_SEQUENCE_WATCH_PROMPT =
+  "/audio/prompts/motor-sequence-builder/watch-the-letters-then-repeat-the-sequence-01.mp3"
+const MOTOR_SEQUENCE_YOUR_TURN_PROMPT =
+  "/audio/prompts/motor-sequence-builder/your-turn-ready-go-01.mp3"
 const WRONG_PROMPTS = [
   "/audio/prompts/shared/wrong-01.mp3",
   "/audio/prompts/shared/wrong-02.mp3",
@@ -40,36 +45,6 @@ function elapsedFrom(startedAt: number) {
   return startedAt > 0
     ? Math.max(0, Math.round(performance.now() - startedAt))
     : 0
-}
-
-function speak(text: string) {
-  if (!("speechSynthesis" in window)) {
-    return Promise.resolve()
-  }
-
-  return new Promise<void>((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text)
-    let settled = false
-    const finish = () => {
-      if (!settled) {
-        settled = true
-        resolve()
-      }
-    }
-    const fallbackTimer = window.setTimeout(finish, 10_000)
-
-    utterance.rate = 0.9
-    utterance.onend = () => {
-      window.clearTimeout(fallbackTimer)
-      finish()
-    }
-    utterance.onerror = () => {
-      window.clearTimeout(fallbackTimer)
-      finish()
-    }
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(utterance)
-  })
 }
 
 function shuffle<T>(values: T[]) {
@@ -91,10 +66,10 @@ function allocateInhibitionCues(
   const cueOrder: InhibitionCue[] = ["go", "no-go", "wait"]
   const weights =
     preset === "go-heavy"
-      ? [0.7, 0.15, 0.15]
+      ? [0.7, 0.2, 0.1]
       : preset === "stop-heavy"
-        ? [0.3, 0.5, 0.2]
-        : [0.5, 0.25, 0.25]
+        ? [0.3, 0.6, 0.1]
+        : [0.5, 0.4, 0.1]
   const exactCounts = weights.map((weight) => count * weight)
   const counts = exactCounts.map(Math.floor)
   const remaining = count - counts.reduce((sum, value) => sum + value, 0)
@@ -118,9 +93,13 @@ function allocateInhibitionCues(
 
 function buildInhibitionPlan(setup: InhibitionChallengeSetup) {
   let previousKey: number | undefined
+  const letterKeys = getLetterKeys(
+    setup.keyboardLayout,
+    setup.keyboardSide
+  ).map((key) => key.id)
   return allocateInhibitionCues(setup.trialCount, setup.rulePreset).map(
     (cue) => {
-      const candidates = LETTER_KEYS.filter((keyId) => keyId !== previousKey)
+      const candidates = letterKeys.filter((keyId) => keyId !== previousKey)
       const targetKeyId =
         candidates[Math.floor(Math.random() * candidates.length)]!
       previousKey = targetKeyId
@@ -173,6 +152,10 @@ export function InhibitionChallengeRuntime({
   onRunError: () => void
 }) {
   const plan = useMemo(() => buildInhibitionPlan(setup), [setup])
+  const keyToLetter = useMemo(
+    () => getKeyToLetterMap(setup.keyboardLayout),
+    [setup.keyboardLayout]
+  )
   const [cueText, setCueText] = useState(
     "Green means hit. Red means stop. Yellow means wait."
   )
@@ -221,7 +204,6 @@ export function InhibitionChallengeRuntime({
   const stopRuntime = useCallback(() => {
     runTokenRef.current += 1
     clearTimers()
-    window.speechSynthesis?.cancel()
     currentTrialRef.current = null
     setInputEnabled(false)
     setIsPlaying(false)
@@ -296,7 +278,7 @@ export function InhibitionChallengeRuntime({
         outcome: "stopped",
         presses: [],
         targetKeyId: plannedTrial.targetKeyId,
-        targetLetter: KEY_TO_LETTER[plannedTrial.targetKeyId]!,
+        targetLetter: keyToLetter[plannedTrial.targetKeyId]!,
         trialIndex: index + 1,
         windowClosed: false,
       }
@@ -311,7 +293,14 @@ export function InhibitionChallengeRuntime({
         finishTrial(trial.cue === "go" ? "missed" : "correct")
       }, setup.responseWindowMs)
     },
-    [buildResult, finishTrial, onProgress, plan, setup.responseWindowMs]
+    [
+      buildResult,
+      finishTrial,
+      keyToLetter,
+      onProgress,
+      plan,
+      setup.responseWindowMs,
+    ]
   )
 
   useEffect(() => {
@@ -329,7 +318,7 @@ export function InhibitionChallengeRuntime({
       trial.presses.push({
         correct,
         keyId,
-        letter: KEY_TO_LETTER[keyId]!,
+        letter: keyToLetter[keyId]!,
         offsetMs: elapsedFrom(sessionStartedAtRef.current),
       })
       onProgress(
@@ -362,12 +351,12 @@ export function InhibitionChallengeRuntime({
         setKeyStates({ [trial.targetKeyId]: "waiting" })
       }, 350)
     },
-    [buildResult, finishTrial, inputEnabled, onProgress]
+    [buildResult, finishTrial, inputEnabled, keyToLetter, onProgress]
   )
 
   useEffect(() => {
     void preloadAudio([
-      READY_PROMPT,
+      INHIBITION_INSTRUCTIONS_PROMPT,
       CORRECT_SOUND,
       GREAT_JOB_PROMPT,
       ...WRONG_PROMPTS,
@@ -410,10 +399,7 @@ export function InhibitionChallengeRuntime({
 
       try {
         await unlockAudio()
-        await playAudio(READY_PROMPT)
-        await speak(
-          "Green means hit. Red means stop. Yellow means wait. Ready, go."
-        )
+        await playAudio(INHIBITION_INSTRUCTIONS_PROMPT)
         if (runToken !== runTokenRef.current) {
           return
         }
@@ -441,6 +427,9 @@ export function InhibitionChallengeRuntime({
       <div className="min-h-[420px] flex-1 overflow-hidden rounded-md">
         <KeyboardLayout
           disabled={!inputEnabled}
+          keyboardLayout={setup.keyboardLayout}
+          keyboardSide={setup.keyboardSide}
+          keyLabels={setup.keyLabels}
           keyStates={keyStates}
           onKeyClick={handleKeyClick}
         />
@@ -458,30 +447,70 @@ type PlannedMotorSequence = {
 function buildMotorPlan(
   setup: MotorSequenceBuilderSetup
 ): PlannedMotorSequence[] {
+  const allowedLetters = getKeyboardLetters(
+    setup.keyboardLayout,
+    setup.keyboardSide
+  )
+  const allowedLetterSet = new Set(allowedLetters)
+  const letterToKey = getLetterToKeyMap(setup.keyboardLayout)
+
   if (setup.contentType === "word-sequence" && setup.sequenceLength >= 3) {
-    return pickRandomWords(
-      String(setup.sequenceLength) as WordLength,
-      setup.sequenceCount
-    ).map((word) => ({
-      keyIds: word.key
-        .toUpperCase()
-        .split("")
-        .map((letter) => LETTER_TO_KEY[letter]!),
-      text: word.label.toUpperCase(),
-      wordAudio: word.audio.word,
-    }))
+    const compatibleWords = wordLibrary.filter(
+      (word) =>
+        word.availability === "available" &&
+        word.key
+          .toUpperCase()
+          .split("")
+          .every((letter) => allowedLetterSet.has(letter))
+    )
+    const nearestDistance = compatibleWords.length
+      ? Math.min(
+          ...compatibleWords.map((word) =>
+            Math.abs(word.length - setup.sequenceLength)
+          )
+        )
+      : null
+    const wordPool = compatibleWords.filter(
+      (word) =>
+        nearestDistance != null &&
+        Math.abs(word.length - setup.sequenceLength) === nearestDistance
+    )
+    const selectedWords: typeof wordPool = []
+
+    while (selectedWords.length < setup.sequenceCount && wordPool.length) {
+      const round = shuffle(wordPool)
+      if (round.length > 1 && selectedWords.at(-1)?.key === round[0]?.key) {
+        ;[round[0], round[1]] = [round[1]!, round[0]!]
+      }
+      selectedWords.push(...round)
+    }
+
+    if (selectedWords.length) {
+      return selectedWords.slice(0, setup.sequenceCount).map((word) => ({
+        keyIds: word.key
+          .toUpperCase()
+          .split("")
+          .map((letter) => letterToKey[letter]!),
+        text: word.label.toUpperCase(),
+        wordAudio: word.audio.word,
+      }))
+    }
   }
 
   return Array.from({ length: setup.sequenceCount }, () => {
-    const keyIds: number[] = []
-    while (keyIds.length < setup.sequenceLength) {
-      const previousKey = keyIds[keyIds.length - 1]
-      const candidates = LETTER_KEYS.filter((keyId) => keyId !== previousKey)
-      keyIds.push(candidates[Math.floor(Math.random() * candidates.length)]!)
+    const letters: string[] = []
+    while (letters.length < setup.sequenceLength) {
+      const candidates = allowedLetters.filter(
+        (letter) =>
+          letters.length < 2 ||
+          letter !== letters.at(-1) ||
+          letter !== letters.at(-2)
+      )
+      letters.push(candidates[Math.floor(Math.random() * candidates.length)]!)
     }
     return {
-      keyIds,
-      text: keyIds.map((keyId) => KEY_TO_LETTER[keyId]).join(""),
+      keyIds: letters.map((letter) => letterToKey[letter]!),
+      text: letters.join(""),
     }
   })
 }
@@ -510,6 +539,10 @@ export function MotorSequenceBuilderRuntime({
   onRunError: () => void
 }) {
   const plan = useMemo(() => buildMotorPlan(setup), [setup])
+  const keyToLetter = useMemo(
+    () => getKeyToLetterMap(setup.keyboardLayout),
+    [setup.keyboardLayout]
+  )
   const [cueText, setCueText] = useState(
     "Watch the letters, then repeat the sequence."
   )
@@ -584,7 +617,6 @@ export function MotorSequenceBuilderRuntime({
 
   const stopRuntime = useCallback(() => {
     runTokenRef.current += 1
-    window.speechSynthesis?.cancel()
     stopTransport()
     setCanRespond(false)
     setIsPlaying(false)
@@ -602,6 +634,10 @@ export function MotorSequenceBuilderRuntime({
       expectedPositionRef.current = 0
       setCanRespond(false)
       setCueText(`Watch sequence ${index + 1} of ${plan.length}`)
+      await playAudio(MOTOR_SEQUENCE_WATCH_PROMPT)
+      if (runToken !== runTokenRef.current) {
+        return
+      }
       const event: MotorSequenceEvent = {
         keyIds: [...sequence.keyIds],
         presentations: [],
@@ -620,11 +656,14 @@ export function MotorSequenceBuilderRuntime({
         }
         event.presentations.push({
           keyId,
-          letter: KEY_TO_LETTER[keyId]!,
+          letter: keyToLetter[keyId]!,
           offsetMs: elapsedFrom(sessionStartedAtRef.current),
         })
         setKeyStates({ [keyId]: "waiting" })
         onProgress(buildResult(), getCompletedUnits())
+        void playAudio(
+          `/audio/letters/${keyToLetter[keyId]!.toLowerCase()}.mp3`
+        )
         await wait(holdMs)
         setKeyStates({})
         await wait(Math.max(0, intervalMs - holdMs))
@@ -637,7 +676,7 @@ export function MotorSequenceBuilderRuntime({
         sessionStartedAtRef.current
       )
       setCueText(`Your turn — repeat ${sequence.keyIds.length} letters`)
-      await playAudio(CORRECT_SOUND)
+      await playAudio(MOTOR_SEQUENCE_YOUR_TURN_PROMPT)
       if (runToken !== runTokenRef.current) {
         return
       }
@@ -647,6 +686,7 @@ export function MotorSequenceBuilderRuntime({
     [
       buildResult,
       getCompletedUnits,
+      keyToLetter,
       onProgress,
       plan,
       setCanRespond,
@@ -674,9 +714,9 @@ export function MotorSequenceBuilderRuntime({
       event.presses.push({
         correct,
         expectedKeyId,
-        expectedLetter: KEY_TO_LETTER[expectedKeyId]!,
+        expectedLetter: keyToLetter[expectedKeyId]!,
         keyId,
-        letter: KEY_TO_LETTER[keyId]!,
+        letter: keyToLetter[keyId]!,
         offsetMs: elapsedFrom(sessionStartedAtRef.current),
       })
       setCanRespond(false)
@@ -691,7 +731,7 @@ export function MotorSequenceBuilderRuntime({
           )
           if (runToken === runTokenRef.current) {
             setKeyStates({})
-            setCueText(`Try ${KEY_TO_LETTER[expectedKeyId]} again`)
+            setCueText(`Try ${keyToLetter[expectedKeyId]} again`)
             setCanRespond(true)
           }
           return
@@ -699,7 +739,7 @@ export function MotorSequenceBuilderRuntime({
 
         expectedPositionRef.current += 1
         await playAudio(
-          `/audio/letters/${KEY_TO_LETTER[keyId]!.toLowerCase()}.mp3`
+          `/audio/letters/${keyToLetter[keyId]!.toLowerCase()}.mp3`
         )
         if (runToken !== runTokenRef.current) {
           return
@@ -741,6 +781,7 @@ export function MotorSequenceBuilderRuntime({
     [
       buildResult,
       getCompletedUnits,
+      keyToLetter,
       onProgress,
       onRunComplete,
       plan,
@@ -751,13 +792,21 @@ export function MotorSequenceBuilderRuntime({
 
   useEffect(() => {
     void preloadAudio([
-      READY_PROMPT,
+      MOTOR_SEQUENCE_WATCH_PROMPT,
+      MOTOR_SEQUENCE_YOUR_TURN_PROMPT,
       CORRECT_SOUND,
       GREAT_JOB_PROMPT,
       ...WRONG_PROMPTS,
       ...plan.flatMap((sequence) => sequence.wordAudio ?? []),
+      ...new Set(
+        plan.flatMap((sequence) =>
+          sequence.keyIds.map(
+            (keyId) => `/audio/letters/${keyToLetter[keyId]!.toLowerCase()}.mp3`
+          )
+        )
+      ),
     ])
-  }, [plan])
+  }, [keyToLetter, plan])
 
   useEffect(() => {
     onPlayingChange(isPlaying)
@@ -794,11 +843,6 @@ export function MotorSequenceBuilderRuntime({
 
       try {
         await unlockAudio()
-        await playAudio(READY_PROMPT)
-        await speak("Watch the letters. Then repeat the sequence. Ready, go.")
-        if (runToken !== runTokenRef.current) {
-          return
-        }
 
         if (setup.audioMode === "music") {
           await startMusic()
@@ -843,6 +887,9 @@ export function MotorSequenceBuilderRuntime({
       <div className="min-h-[420px] flex-1 overflow-hidden rounded-md">
         <KeyboardLayout
           disabled={!inputEnabled}
+          keyboardLayout={setup.keyboardLayout}
+          keyboardSide={setup.keyboardSide}
+          keyLabels={setup.keyLabels}
           keyStates={keyStates}
           onKeyClick={handleKeyClick}
         />

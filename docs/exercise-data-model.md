@@ -2,6 +2,30 @@
 
 This document defines the session-level data model for each Stella exercise. Each table is explicit: metadata, configuration, and metrics are repeated per exercise so each exercise can stand on its own.
 
+## Runtime boundaries
+
+Stella owns the patient context, exercise setup form, saved session, and reports. The keyboard device owns exercise presentation, physical input, timing, audio, and scoring while a session is running.
+
+The device API uses a separate wire model rather than sending Stella's UI objects directly:
+
+| Stella model | Device API | Saved result |
+|---|---|---|
+| `letter-target` | `letter_target` | `letter-target` |
+| `letter-find` | `letter_find` | `letter-find` |
+| `eye-pong` | `eye_pong` | `eye-pong` |
+| `inhibition-challenge` | `inhibition_challenge` | `inhibition-challenge` |
+| `motor-sequence-builder` | `motor_sequence_builder` | `motor-sequence-builder` |
+| `keyboardLayout` | `layout` | Configuration fields on the saved session |
+| `keyboardSide` | `side` | Configuration fields on the saved session |
+| `keyLabels` | `key_label` | Configuration fields on the saved session |
+| Activity-specific count | `items` | Activity-specific completed/total metrics |
+| `audioMode: silent` | `beat: none` | `audioMode: silent` |
+| Patient code | `participant` | `patientId` remains Stella-owned |
+
+The device returns a summary plus an event-level JSONL log. Stella maps those values into the report fields below and also retains the original payload at `rawEventPayload.devicePayload`. This allows the current reports to work without discarding device data that may support future analysis.
+
+Exact integration shapes and endpoints are defined in `docs/api-reference.md`. The TypeScript source of truth is `stella/src/types/exercise-control.ts` for Stella and `stella/src/lib/device/device-types.ts` for the wire model.
+
 ## Letter Target
 
 | Field | Type | Value type | Source / calculation | Description |
@@ -14,7 +38,7 @@ This document defines the session-level data model for each Stella exercise. Eac
 | summary | metric | string | Generated from result values. | Human-readable session summary. |
 | contentMode | config | enum | User-selected config: `letters` or `words`. | Whether prompts are single letters or words. |
 | itemsPerSession | config | number | User-selected config. | Number of prompts configured for the session. |
-| wordLength | config | enum | User-selected config: `0-5`, `5-10`, or `10+`. | Word length band when words are used. |
+| wordLength | config | enum | User-selected range: `0-5`, `5-10`, or `10+`. Legacy records may contain exact lengths `3`–`8`. | Word-length range when words are used. |
 | audioMode | config | enum | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
 | tempoBpm | config | number | User-selected config when audio timing is active. | Tempo in beats per minute. |
 | itemsCompleted | metric | number | Count of configured prompts completed before finish/stop. | Completed letters or words. |
@@ -50,7 +74,7 @@ This document defines the session-level data model for each Stella exercise. Eac
 | Summary | summary | Sentence summary | Always | Generated from completed items and first-attempt accuracy. |
 | Configuration | contentMode | Letters / Words | Always | Shows the prompt type used. |
 | Configuration | itemsPerSession | Count | Always | Configured session length. |
-| Configuration | wordLength | Word length band | When `contentMode` is `words` | Hide for letter-only sessions. |
+| Configuration | wordLength | Word range | When `contentMode` is `words` | Hide for letter-only sessions. |
 | Configuration | audioMode | Silent / Metronome / Music | Always | Shows support mode. |
 | Configuration | tempoBpm | BPM | When audio timing is active | Hide when audio mode is silent. |
 | Results | itemsCompleted | `itemsCompleted / itemsTotal` | Always | Primary completion metric. |
@@ -77,7 +101,7 @@ This document defines the session-level data model for each Stella exercise. Eac
 | summary | metric | string | Generated from result values. | Human-readable session summary. |
 | contentMode | config | enum | User-selected config: `letters` or `words`. | Whether prompts are spoken letters or spoken words. |
 | itemsPerSession | config | number | User-selected config. | Number of prompts configured for the session. |
-| wordLength | config | enum | User-selected config: `0-5`, `5-10`, or `10+`. | Word length band when words are used. |
+| wordLength | config | enum | User-selected range: `0-5`, `5-10`, or `10+`. Legacy records may contain exact lengths `3`–`8`. | Word-length range when words are used. |
 | audioMode | config | enum | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
 | tempoBpm | config | number | User-selected config when audio timing is active. | Tempo in beats per minute. |
 | itemsCompleted | metric | number | Count of configured prompts completed before finish/stop. | Completed spoken letters or words. |
@@ -113,7 +137,7 @@ This document defines the session-level data model for each Stella exercise. Eac
 | Summary | summary | Sentence summary | Always | Generated from completed prompts and first-attempt accuracy. |
 | Configuration | contentMode | Letters / Words | Always | Shows whether prompts were spoken letters or spoken words. |
 | Configuration | itemsPerSession | Count | Always | Configured prompt count. |
-| Configuration | wordLength | Word length band | When `contentMode` is `words` | Hide for letter-only sessions. |
+| Configuration | wordLength | Word range | When `contentMode` is `words` | Hide for letter-only sessions. |
 | Configuration | audioMode | Silent / Metronome / Music | Always | Shows support mode. |
 | Configuration | tempoBpm | BPM | When audio timing is active | Hide when audio mode is silent. |
 | Results | itemsCompleted | `itemsCompleted / itemsTotal` | Always | Label as prompts completed. |

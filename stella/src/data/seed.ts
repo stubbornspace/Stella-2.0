@@ -451,12 +451,14 @@ function makeLetterTarget(
         : "metronome"
   const wordLength =
     contentMode === "words"
-      ? (["3", "4", "5", "6", "7", "8"] as const)[sessionIndex % 6]
+      ? (["0-5", "5-10", "10+"] as const)[sessionIndex % 3]
       : undefined
+  const wordCharacterCount =
+    wordLength === "0-5" ? 4 : wordLength === "5-10" ? 8 : 11
   const targetCount =
     contentMode === "letters"
       ? itemsCompleted
-      : itemsCompleted * Number(wordLength)
+      : itemsCompleted * wordCharacterCount
   const desiredAccuracy = clamp(point.accuracy, 68, 96)
   const desiredFirstAttempt = clamp(point.firstAttempt, 62, 94)
   const targetsWithErrors = Math.max(
@@ -645,12 +647,14 @@ function makeLetterFind(
         : "metronome"
   const wordLength =
     contentMode === "words"
-      ? (["3", "4", "5", "6", "7", "8"] as const)[sessionIndex % 6]
+      ? (["0-5", "5-10", "10+"] as const)[sessionIndex % 3]
       : undefined
+  const wordCharacterCount =
+    wordLength === "0-5" ? 4 : wordLength === "5-10" ? 8 : 11
   const targetCount =
     contentMode === "letters"
       ? itemsCompleted
-      : itemsCompleted * Number(wordLength)
+      : itemsCompleted * wordCharacterCount
   const desiredAccuracy = clamp(point.accuracy - 2, 64, 94)
   const desiredFirstAttempt = clamp(point.firstAttempt - 1, 60, 92)
   const targetsWithErrors = Math.max(

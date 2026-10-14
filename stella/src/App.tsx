@@ -54,6 +54,7 @@ import { useAuth } from "@/components/auth/auth-context"
 import { LoginPage } from "@/components/auth/login-page"
 import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
 import { KeyboardRuntimePage } from "@/components/exercise-runtime/keyboard-runtime-page"
+import { DeviceRuntimePage } from "@/components/exercise-runtime/device-runtime-page"
 import { FeedbackWidget } from "@/components/feedback/feedback-widget"
 import { PatientAnalysisPanel } from "@/components/patients/patient-analysis-panel"
 import {
@@ -76,6 +77,7 @@ import {
 } from "@/hooks/use-stella"
 import { saveRerunExerciseSetup } from "@/lib/exercise-runtime/session-storage"
 import { cn } from "@/lib/utils"
+import { getRuntimeConfig } from "@/lib/runtime-config"
 import type {
   ExerciseSession,
   ExerciseSummary,
@@ -1174,7 +1176,7 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
     configRows.push(["Items", session.itemsPerSession])
   }
   if ("wordLength" in session && session.wordLength) {
-    configRows.push(["Word Length", session.wordLength])
+    configRows.push(["Word Range", session.wordLength])
   }
   if ("audioMode" in session) {
     configRows.push([
@@ -1995,6 +1997,7 @@ function AppShell({
 export function App() {
   const { isAuthEnabled, signOut, status, user } = useAuth()
   const [toast, setToast] = useState("")
+  const exerciseRuntimeMode = getRuntimeConfig().exerciseRuntime.mode
 
   function showToast(message: string) {
     setToast(message)
@@ -2053,7 +2056,13 @@ export function App() {
           path="/patients/:patientId/exercises/:exerciseType"
         />
         <Route
-          element={<KeyboardRuntimePage onToast={showToast} />}
+          element={
+            exerciseRuntimeMode === "device" ? (
+              <DeviceRuntimePage onToast={showToast} />
+            ) : (
+              <KeyboardRuntimePage onToast={showToast} />
+            )
+          }
           path="/patients/:patientId/run/:exerciseType"
         />
         <Route element={<Navigate replace to="/" />} path="*" />

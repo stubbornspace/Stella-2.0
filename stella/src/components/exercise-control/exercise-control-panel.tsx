@@ -3,10 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import {
-  getAvailableWordLengths,
-  getWordsByLength,
-} from "@/content/word-library"
+import { getAvailableWordRanges, getWordsByRange } from "@/content/word-library"
 import {
   exerciseControlDefinitions,
   getDefaultExerciseSetup,
@@ -280,17 +277,17 @@ function LetterExerciseSettings({
       contentMode,
       wordLength:
         contentMode === "words"
-          ? (setup.wordLength ?? getAvailableWordLengths()[0] ?? "3")
+          ? (setup.wordLength ?? getAvailableWordRanges()[0] ?? "0-5")
           : undefined,
     })
   }
 
-  const availableWordLengths = getAvailableWordLengths()
+  const availableWordRanges = getAvailableWordRanges()
   const allowedLetters = new Set(
     getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
   )
   const matchingWordCount = setup.wordLength
-    ? getWordsByLength(setup.wordLength, { availableOnly: true }).filter(
+    ? getWordsByRange(setup.wordLength, { availableOnly: true }).filter(
         (word) =>
           setup.keyboardSide === "full" ||
           word.key
@@ -347,7 +344,7 @@ function LetterExerciseSettings({
               ? `${matchingWordCount} prescribed words fit this keyboard configuration.`
               : "No prescribed words fit this keyboard configuration."
           }
-          label="Word length"
+          label="Word range"
         >
           <select
             className={inputClassName}
@@ -357,11 +354,11 @@ function LetterExerciseSettings({
                 wordLength: event.target.value as WordLength,
               })
             }
-            value={setup.wordLength ?? availableWordLengths[0] ?? "3"}
+            value={setup.wordLength ?? availableWordRanges[0] ?? "0-5"}
           >
-            {availableWordLengths.map((length) => (
-              <option key={length} value={length}>
-                {length} letters
+            {availableWordRanges.map((range) => (
+              <option key={range} value={range}>
+                {range} letters
               </option>
             ))}
           </select>
@@ -699,7 +696,7 @@ function getSetupRows(setup: ExerciseSetup): Array<[string, string]> {
       ),
     ])
     if (setup.contentMode === "words" && setup.wordLength) {
-      rows.push(["Word length", setup.wordLength])
+      rows.push(["Word range", setup.wordLength])
     }
     rows.push([
       "Beat",
@@ -775,7 +772,7 @@ function isExerciseSetupValid(setup: ExerciseSetup) {
   const allowedLetters = new Set(
     getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
   )
-  return getWordsByLength(setup.wordLength, { availableOnly: true }).some(
+  return getWordsByRange(setup.wordLength, { availableOnly: true }).some(
     (word) =>
       setup.keyboardSide === "full" ||
       word.key

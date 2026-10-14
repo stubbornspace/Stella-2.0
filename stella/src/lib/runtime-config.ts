@@ -20,6 +20,12 @@ const runtimeConfigSchema = z.object({
       baseUrl: z.string().trim().optional(),
     })
     .default({}),
+  exerciseRuntime: z
+    .object({
+      mode: z.enum(["embedded", "device"]).default("embedded"),
+      deviceBaseUrl: z.string().trim().optional(),
+    })
+    .default({ mode: "embedded" }),
 })
 
 export type RuntimeConfig = z.infer<typeof runtimeConfigSchema>
@@ -32,6 +38,10 @@ const defaultConfig: RuntimeConfig = {
   },
   api: {
     baseUrl: "",
+  },
+  exerciseRuntime: {
+    mode: "embedded",
+    deviceBaseUrl: "",
   },
 }
 
@@ -65,6 +75,13 @@ function mergeRuntimeConfig(
       ...defaultConfig.api,
       ...parsed.data.api,
       baseUrl: normalizeBaseUrl(parsed.data.api.baseUrl),
+    },
+    exerciseRuntime: {
+      ...defaultConfig.exerciseRuntime,
+      ...parsed.data.exerciseRuntime,
+      deviceBaseUrl: normalizeBaseUrl(
+        parsed.data.exerciseRuntime.deviceBaseUrl
+      ),
     },
   }
 }

@@ -19,8 +19,8 @@ export type KeyboardRuntimeExerciseType = Extract<
 >
 
 export type ExerciseAudioMode = "silent" | "metronome" | "music"
-export type WordLength = "3" | "4" | "5" | "6" | "7" | "8"
-export type HistoricalWordLength = "0-5" | "5-10" | "10+"
+export type WordLength = "0-5" | "5-10" | "10+"
+export type HistoricalWordLength = "3" | "4" | "5" | "6" | "7" | "8"
 export type KeyboardLayoutMode = "qwerty" | "alphabetical"
 export type KeyboardSide = "full" | "left" | "right"
 export type KeyLabelMode = "letters" | "blank"
@@ -110,6 +110,7 @@ interface BaseExerciseRunResult {
   keyboardLayout: KeyboardLayoutMode
   keyboardSide: KeyboardSide
   keyLabels: KeyLabelMode
+  devicePayload?: unknown
 }
 
 export interface LetterTargetRunResult extends BaseExerciseRunResult {

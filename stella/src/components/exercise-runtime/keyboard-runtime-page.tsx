@@ -11,8 +11,8 @@ import {
 } from "@/components/exercise-runtime/advanced-keyboard-runtimes"
 import { getPromptById } from "@/content/prompt-library"
 import {
-  getAvailableWordLengths,
-  getWordsByLength,
+  getAvailableWordRanges,
+  getWordsByRange,
   pickRandomWords,
   type WordEntry,
 } from "@/content/word-library"
@@ -277,7 +277,7 @@ function buildWordSequence(
 }
 
 function pickRandomWordsForSetup(setup: LetterTargetSetup | LetterFindSetup) {
-  const wordLength = setup.wordLength ?? getAvailableWordLengths()[0] ?? "3"
+  const wordLength = setup.wordLength ?? getAvailableWordRanges()[0] ?? "0-5"
 
   if (setup.keyboardSide === "full") {
     return pickRandomWords(wordLength, setup.numberOfWords)
@@ -286,7 +286,7 @@ function pickRandomWordsForSetup(setup: LetterTargetSetup | LetterFindSetup) {
   const allowedLetters = new Set(
     getKeyboardLetters(setup.keyboardLayout, setup.keyboardSide)
   )
-  const pool = getWordsByLength(wordLength, { availableOnly: true }).filter(
+  const pool = getWordsByRange(wordLength, { availableOnly: true }).filter(
     (word) =>
       word.key
         .toUpperCase()
@@ -401,7 +401,7 @@ function summarizeLetterStats(stats: LetterStat[]) {
   }
 }
 
-function FinishedRuntimeSession({
+export function FinishedRuntimeSession({
   patientId,
   patientName,
   result,
@@ -554,7 +554,7 @@ function FinishedRuntimeSession({
                   value:
                     result.contentMode === "letters"
                       ? "Letters"
-                      : `${result.wordLength ?? "?"}-letter words`,
+                      : `Words (${result.wordLength ?? "unknown"} letters)`,
                 },
                 { label: "Attempts", value: String(metrics.totalAttempts) },
                 {

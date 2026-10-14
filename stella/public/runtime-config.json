@@ -8,5 +8,9 @@
   },
   "api": {
     "baseUrl": "https://ywcwtivnz1.execute-api.us-west-1.amazonaws.com"
+  },
+  "exerciseRuntime": {
+    "mode": "device",
+    "deviceBaseUrl": "http://localhost:4175"
   }
 }

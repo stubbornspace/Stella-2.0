@@ -1,0 +1,12 @@
+{
+  "auth": {
+    "enabled": false
+  },
+  "api": {
+    "baseUrl": ""
+  },
+  "exerciseRuntime": {
+    "mode": "device",
+    "deviceBaseUrl": "http://localhost:4175"
+  }
+}
