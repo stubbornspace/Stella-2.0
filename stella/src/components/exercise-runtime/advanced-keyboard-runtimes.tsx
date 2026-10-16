@@ -25,8 +25,7 @@ import type {
 
 const CORRECT_SOUND = "/audio/effects/legacy-correct.mp3"
 const GREAT_JOB_PROMPT = "/audio/prompts/shared/great-job-01.mp3"
-const INHIBITION_INSTRUCTIONS_PROMPT =
-  "/audio/prompts/inhibition-challenge/green-means-hit-red-means-stop-yellow-means-wait-01.mp3"
+const READY_PROMPT = "/audio/prompts/shared/ready-to-play-01.mp3"
 const MOTOR_SEQUENCE_WATCH_PROMPT =
   "/audio/prompts/motor-sequence-builder/watch-the-letters-then-repeat-the-sequence-01.mp3"
 const MOTOR_SEQUENCE_YOUR_TURN_PROMPT =
@@ -63,13 +62,13 @@ function allocateInhibitionCues(
   count: number,
   preset: InhibitionChallengeSetup["rulePreset"]
 ) {
-  const cueOrder: InhibitionCue[] = ["go", "no-go", "wait"]
+  const cueOrder: InhibitionCue[] = ["go", "no-go"]
   const weights =
     preset === "go-heavy"
-      ? [0.7, 0.2, 0.1]
+      ? [0.7, 0.3]
       : preset === "stop-heavy"
-        ? [0.3, 0.6, 0.1]
-        : [0.5, 0.4, 0.1]
+        ? [0.3, 0.7]
+        : [0.5, 0.5]
   const exactCounts = weights.map((weight) => count * weight)
   const counts = exactCounts.map(Math.floor)
   const remaining = count - counts.reduce((sum, value) => sum + value, 0)
@@ -112,18 +111,12 @@ function cueKeyState(cue: InhibitionCue): KeyState {
   if (cue === "no-go") {
     return "no-go"
   }
-  if (cue === "wait") {
-    return "wait"
-  }
   return "waiting"
 }
 
 function cueLabel(cue: InhibitionCue) {
   if (cue === "no-go") {
     return "STOP — do not press"
-  }
-  if (cue === "wait") {
-    return "WAIT — do not press"
   }
   return "GO — press the green key"
 }
@@ -157,7 +150,7 @@ export function InhibitionChallengeRuntime({
     [setup.keyboardLayout]
   )
   const [cueText, setCueText] = useState(
-    "Green means hit. Red means stop. Yellow means wait."
+    "Green means go. Red means stop."
   )
   const [inputEnabled, setInputEnabled] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -356,7 +349,7 @@ export function InhibitionChallengeRuntime({
 
   useEffect(() => {
     void preloadAudio([
-      INHIBITION_INSTRUCTIONS_PROMPT,
+      READY_PROMPT,
       CORRECT_SOUND,
       GREAT_JOB_PROMPT,
       ...WRONG_PROMPTS,
@@ -395,11 +388,11 @@ export function InhibitionChallengeRuntime({
       trialsRef.current = []
       currentTrialRef.current = null
       setKeyStates({})
-      setCueText("Listen to the color rule")
+      setCueText("Green means go. Red means stop.")
 
       try {
         await unlockAudio()
-        await playAudio(INHIBITION_INSTRUCTIONS_PROMPT)
+        await playAudio(READY_PROMPT)
         if (runToken !== runTokenRef.current) {
           return
         }

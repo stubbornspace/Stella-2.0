@@ -120,7 +120,7 @@ test("rejects unknown configuration fields", async () => {
   }
 });
 
-test("accepts the Stella inhibition trial range and builds the exact preset mix", async () => {
+test("builds an exact two-cue Inhibition Challenge mix", async () => {
   const simulator = createDeviceSimulator({
     audioDelayMs: 5,
     tickIntervalMs: 5,
@@ -138,8 +138,8 @@ test("accepts the Stella inhibition trial range and builds the exact preset mix"
       body: JSON.stringify({
         activity: "inhibition_challenge",
         items: 20,
-        nogo_percent: 40,
-        wait_percent: 10,
+        nogo_percent: 50,
+        wait_percent: 25,
       }),
     });
     assert.equal(response.status, 200);
@@ -152,7 +152,8 @@ test("accepts the Stella inhibition trial range and builds the exact preset mix"
         counts[cue] = (counts[cue] ?? 0) + 1;
         return counts;
       }, {});
-    assert.deepEqual(cueCounts, { go: 10, nogo: 8, wait: 2 });
+    assert.deepEqual(cueCounts, { go: 10, nogo: 10 });
+    assert.equal(configured.config.wait_percent, 0);
 
     await fetch(`${baseUrl}/api/config`, {
       method: "POST",
@@ -194,7 +195,7 @@ test("accepts the Stella inhibition trial range and builds the exact preset mix"
   }
 });
 
-test("runs Motor Sequence Builder through demonstration and reproduction", async () => {
+test("rejects the retired Motor Sequence Builder activity", async () => {
   const simulator = createDeviceSimulator({
     audioDelayMs: 5,
     tickIntervalMs: 5,
@@ -211,77 +212,9 @@ test("runs Motor Sequence Builder through demonstration and reproduction", async
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         activity: "motor_sequence_builder",
-        content: "letters",
-        key_label: "blank",
-        items: 1,
-        sequence_start_length: 2,
-        sequence_progression: false,
-        sequence_max_length: 2,
       }),
     });
-    assert.equal(configResponse.status, 200);
-
-    const startResponse = await fetch(`${baseUrl}/api/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-    assert.equal(startResponse.status, 200);
-
-    const responseState = await waitFor(async () => {
-      const state = await fetch(`${baseUrl}/api/state`).then((response) =>
-        response.json(),
-      );
-      return state.session?.phase === "response" ? state : null;
-    });
-    assert.equal(responseState.presentation.board.key_label, "blank");
-
-    const letters = [...simulator.engine.item.trials];
-    assert.equal(letters.length, 2);
-    for (const letter of letters) {
-      const pressResponse = await fetch(`${baseUrl}/api/press`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key_id: simulator.engine.letterToId[letter] }),
-      });
-      assert.equal(pressResponse.status, 200);
-      await waitFor(() =>
-        simulator.engine.phase === "response" ||
-        simulator.engine.phase === "idle"
-          ? true
-          : null,
-      );
-    }
-
-    const result = await waitFor(async () => {
-      const response = await fetch(`${baseUrl}/api/results`);
-      return response.status === 200 ? response.json() : null;
-    });
-    assert.equal(result.end_reason, "completed");
-    assert.equal(result.counts.items_completed, 1);
-    assert.equal(result.msb_metrics.longest_completed_sequence, 2);
-    assert.equal(result.msb_metrics.first_attempt_sequence_accuracy, 100);
-
-    const events = (
-      await fetch(`${baseUrl}/api/export.jsonl`).then((response) =>
-        response.text(),
-      )
-    )
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    assert.equal(
-      events.filter(
-        (event) => event.type === "prompt_start" && event.clip === "msb_watch",
-      ).length,
-      1,
-    );
-    assert.deepEqual(
-      events
-        .filter((event) => event.type === "target_display")
-        .map((event) => event.expected_target_letter),
-      letters,
-    );
+    assert.equal(configResponse.status, 400);
   } finally {
     await simulator.close();
   }

@@ -1,5 +1,6 @@
 import { getValidIdToken } from "@/lib/auth"
 import { getRuntimeConfig } from "@/lib/runtime-config"
+import { getSelectedClinicId } from "@/lib/clinic-session"
 import type {
   CreateFeedbackNoteInput,
   FeedbackContext,
@@ -51,6 +52,9 @@ async function remoteRequest<T>(path: string, init?: RequestInit) {
     headers: {
       Authorization: `Bearer ${idToken}`,
       "Content-Type": "application/json",
+      ...(getSelectedClinicId()
+        ? { "X-Stella-Clinic-Id": getSelectedClinicId() }
+        : {}),
       ...(init?.headers ?? {}),
     },
   })

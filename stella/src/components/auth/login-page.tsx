@@ -1,14 +1,12 @@
 import { KeyRound, Mail } from "lucide-react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/components/auth/auth-context"
 import { Button } from "@/components/ui/button"
 
 type LoginView =
-  | "sign-in"
-  | "forgot-password"
-  | "reset-password"
-  | "new-password"
+  "sign-in" | "forgot-password" | "reset-password" | "new-password"
 
 function PasswordFields({
   confirmPassword,
@@ -46,6 +44,7 @@ function PasswordFields({
 }
 
 export function LoginPage() {
+  const navigate = useNavigate()
   const {
     challenge,
     clearChallenge,
@@ -113,21 +112,19 @@ export function LoginPage() {
           "Your temporary password was accepted. Set a permanent password to continue."
         )
         setView("new-password")
+      } else {
+        navigate("/", { replace: true })
       }
     } catch (nextError) {
       setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Unable to sign in."
+        nextError instanceof Error ? nextError.message : "Unable to sign in."
       )
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  async function handleForgotPassword(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleForgotPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     resetMessages()
 
@@ -153,9 +150,7 @@ export function LoginPage() {
     }
   }
 
-  async function handleResetPassword(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleResetPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     resetMessages()
 
@@ -189,9 +184,7 @@ export function LoginPage() {
     }
   }
 
-  async function handleNewPassword(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleNewPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     resetMessages()
 
@@ -209,6 +202,7 @@ export function LoginPage() {
 
     try {
       await completeNewPassword(newPassword)
+      navigate("/", { replace: true })
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -281,7 +275,10 @@ export function LoginPage() {
             ) : null}
 
             {currentView === "sign-in" ? (
-              <form className="mt-6 flex flex-col gap-4" onSubmit={handleSignIn}>
+              <form
+                className="mt-6 flex flex-col gap-4"
+                onSubmit={handleSignIn}
+              >
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Email
                   <div className="relative">

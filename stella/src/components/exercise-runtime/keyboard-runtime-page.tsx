@@ -2,7 +2,11 @@ import { ArrowLeft, Check, Square } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 
-import { useSaveExerciseRun, usePatient } from "@/hooks/use-stella"
+import {
+  useSaveExerciseRun,
+  usePatient,
+  useUpdateSessionNotes,
+} from "@/hooks/use-stella"
 import { Button } from "@/components/ui/button"
 import { KeyboardLayout } from "@/components/exercise-runtime/keyboard-layout"
 import {
@@ -20,6 +24,12 @@ import { getRuntimePreloadUrls } from "@/content/audio-manifest"
 import { type KeyState } from "@/lib/audio/constants"
 import { preloadAudio, playAudio, unlockAudio } from "@/lib/audio/sound-manager"
 import { STOMP_DOWNBEAT_BPM } from "@/lib/audio/stomp-beat-map"
+import { createEmbeddedDevicePayload } from "@/lib/device/embedded-device-payload"
+import {
+  devicePayloadToRunResult,
+  getDeviceCompletedUnits,
+  getDeviceRunStatus,
+} from "@/lib/device/device-results"
 import {
   useKeyboardGameEngine,
   type AudioConfig,
@@ -406,6 +416,7 @@ export function FinishedRuntimeSession({
   patientName,
   result,
   runStatus,
+  sessionId,
   completedUnits,
   setup,
   totalUnits,
@@ -414,13 +425,31 @@ export function FinishedRuntimeSession({
   patientName: string
   result: ExerciseRunResult
   runStatus: "completed" | "ended-early"
+  sessionId: string
   completedUnits: number
   setup: ExerciseSetup
   totalUnits: number
 }) {
   const navigate = useNavigate()
+  const updateNotes = useUpdateSessionNotes()
   const definition = exerciseDefinitions[result.activity]
   const completed = runStatus === "completed"
+  const [notes, setNotes] = useState("")
+  const [notesSaved, setNotesSaved] = useState(false)
+
+  const handleSaveNotes = useCallback(async () => {
+    setNotesSaved(false)
+    try {
+      await updateNotes.mutateAsync({
+        patientId,
+        sessionId,
+        sessionNotes: notes,
+      })
+      setNotesSaved(true)
+    } catch {
+      // The mutation exposes its error inline below the notes field.
+    }
+  }, [notes, patientId, sessionId, updateNotes])
 
   const handleRunAgain = useCallback(() => {
     saveRerunExerciseSetup({
@@ -450,11 +479,12 @@ export function FinishedRuntimeSession({
           },
           { label: "Targets Presented", value: String(result.targetChanges) },
           {
-            label: "Keyboard Layout",
+            label: "Keyboard Side",
             value:
-              result.keyboardLayout === "alphabetical"
-                ? "Alphabetical"
-                : "QWERTY",
+              result.mode === "left-right"
+                ? "Full"
+                : result.keyboardSide.charAt(0).toUpperCase() +
+                  result.keyboardSide.slice(1),
           },
         ]
       : result.activity === "inhibition-challenge"
@@ -632,6 +662,42 @@ export function FinishedRuntimeSession({
           This session was saved to the patient dashboard and is ready for
           review.
         </div>
+
+        {result.activity === "eye-pong" ? (
+          <div className="mt-6 rounded-lg border bg-background p-4">
+            <div className="font-medium">Session notes</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Document observations from this Eye Pong session.
+            </p>
+            <textarea
+              className="mt-3 min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              maxLength={2000}
+              onChange={(event) => {
+                setNotes(event.target.value)
+                setNotesSaved(false)
+              }}
+              placeholder="Add session notes..."
+              value={notes}
+            />
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="text-xs text-muted-foreground">
+                {updateNotes.error
+                  ? updateNotes.error.message
+                  : notesSaved
+                    ? "Notes saved."
+                    : `${notes.length}/2,000`}
+              </div>
+              <Button
+                disabled={updateNotes.isPending}
+                onClick={() => void handleSaveNotes()}
+                size="sm"
+                type="button"
+              >
+                {updateNotes.isPending ? "Saving..." : "Save notes"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 flex justify-end gap-2">
           <Button onClick={handleRunAgain} type="button" variant="outline">
@@ -1259,6 +1325,7 @@ export function KeyboardRuntimePage({
     completedUnits: number
     result: ExerciseRunResult
     runStatus: "completed" | "ended-early"
+    sessionId: string
   } | null>(null)
   const activeStartTimeRef = useRef<number | null>(null)
   const resultRef = useRef<ExerciseRunResult | null>(null)
@@ -1377,10 +1444,9 @@ export function KeyboardRuntimePage({
           : Math.max(1, measuredElapsedSeconds)
 
       try {
-        await saveExerciseRun.mutateAsync({
+        const devicePayload = createEmbeddedDevicePayload({
           completedUnits: nextCompletedUnits,
-          elapsedSeconds: finalElapsedSeconds,
-          patientId,
+          participant: patientQuery.data?.patientCode ?? patientId,
           result: {
             ...result,
             elapsedSeconds: finalElapsedSeconds,
@@ -1389,14 +1455,28 @@ export function KeyboardRuntimePage({
           setup: pendingRun.setup,
           status: runStatus,
         })
+        const normalizedResult = devicePayloadToRunResult(
+          devicePayload,
+          pendingRun.setup
+        )
+        const normalizedCompletedUnits = getDeviceCompletedUnits(devicePayload)
+        const normalizedStatus = getDeviceRunStatus(devicePayload)
+
+        const savedSession = await saveExerciseRun.mutateAsync({
+          completedUnits: normalizedCompletedUnits,
+          elapsedSeconds: normalizedResult.elapsedSeconds,
+          patientId,
+          result: normalizedResult,
+          runId: pendingRun.savedAt,
+          setup: pendingRun.setup,
+          status: normalizedStatus,
+        })
         clearPendingExerciseRun(patientId, validActivity)
         setFinishedRun({
-          completedUnits: nextCompletedUnits,
-          result: {
-            ...result,
-            elapsedSeconds: finalElapsedSeconds,
-          },
-          runStatus,
+          completedUnits: normalizedCompletedUnits,
+          result: normalizedResult,
+          runStatus: normalizedStatus,
+          sessionId: savedSession.sessionId,
         })
         setStatus("finished")
         onToast(
@@ -1625,6 +1705,7 @@ export function KeyboardRuntimePage({
         patientName={patientName}
         result={finishedRun.result}
         runStatus={finishedRun.runStatus}
+        sessionId={finishedRun.sessionId}
         setup={pendingRun.setup}
         totalUnits={totalUnits ?? finishedRun.completedUnits}
       />

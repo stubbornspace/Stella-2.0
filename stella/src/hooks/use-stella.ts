@@ -8,6 +8,7 @@ import {
   getPatientSessions,
   getPatients,
   saveExerciseRun,
+  updateSessionNotes,
   type CreatePatientInput,
 } from "@/api/stella"
 import type { ExerciseType } from "@/types"
@@ -75,6 +76,22 @@ export function useSaveExerciseRun() {
     onSuccess: (session) => {
       void queryClient.invalidateQueries({ queryKey: ["patients"] })
       void queryClient.invalidateQueries({ queryKey: ["dashboardStats"] })
+      void queryClient.invalidateQueries({
+        queryKey: ["patientSessions", session.patientId],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["exerciseSessions", session.patientId, session.activity],
+      })
+    },
+  })
+}
+
+export function useUpdateSessionNotes() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateSessionNotes,
+    onSuccess: (session) => {
       void queryClient.invalidateQueries({
         queryKey: ["patientSessions", session.patientId],
       })

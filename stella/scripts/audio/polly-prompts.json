@@ -22,7 +22,6 @@
   {"id":"follow-lights-01","text":"Follow the lights with your eyes.","output":"prompts/eye-pong/follow-the-lights-with-your-eyes-01.mp3","status":"planned"},
   {"id":"watch-lights-01","text":"Watch the lights move across the keyboard.","output":"prompts/eye-pong/watch-the-lights-move-across-the-keyboard-01.mp3","status":"planned"},
 
-  {"id":"inhibition-instructions-01","text":"Green means hit. Red means stop. Yellow means wait. Ready, go.","output":"prompts/inhibition-challenge/green-means-hit-red-means-stop-yellow-means-wait-01.mp3","status":"planned"},
   {"id":"motor-sequence-watch-01","text":"Watch the letters. Then repeat the sequence. Ready, go.","output":"prompts/motor-sequence-builder/watch-the-letters-then-repeat-the-sequence-01.mp3","status":"planned"},
   {"id":"motor-sequence-your-turn-01","text":"Your turn. Ready, go.","output":"prompts/motor-sequence-builder/your-turn-ready-go-01.mp3","status":"planned"}
 ]

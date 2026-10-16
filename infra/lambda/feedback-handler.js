@@ -1,14 +1,25 @@
 "use strict";
 
 const {
+  GetItemCommand,
   DynamoDBClient,
   PutItemCommand,
   QueryCommand,
 } = require("@aws-sdk/client-dynamodb");
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+const {
+  errorResponse,
+  getActor,
+  httpError,
+  resolveClinicAccess,
+} = require("./clinic-auth");
 
 const dynamo = new DynamoDBClient({});
 
 const tableName = process.env.TABLE_NAME;
+const membershipsTableName = process.env.MEMBERSHIPS_TABLE_NAME;
+const patientsTableName = process.env.PATIENTS_TABLE_NAME;
+const clinicsTableName = process.env.CLINICS_TABLE_NAME;
 
 function response(statusCode, body) {
   return {
@@ -20,40 +31,16 @@ function response(statusCode, body) {
   };
 }
 
-function parseGroups(rawGroups) {
-  if (Array.isArray(rawGroups)) {
-    return rawGroups;
-  }
-
-  if (typeof rawGroups !== "string" || rawGroups.length === 0) {
-    return [];
-  }
-
-  if (rawGroups.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(rawGroups);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return rawGroups
-    .split(",")
-    .map((group) => group.trim())
-    .filter(Boolean);
-}
-
-function getClaims(event) {
-  return event.requestContext?.authorizer?.jwt?.claims ?? {};
-}
-
-function assertAuthorized(event) {
-  return getClaims(event);
-}
-
 function getStringValue(attribute) {
   return attribute && "S" in attribute ? attribute.S : undefined;
+}
+
+function parseBody(event) {
+  try {
+    return JSON.parse(event.body ?? "{}");
+  } catch {
+    throw httpError(400, "Invalid request body.");
+  }
 }
 
 function decodeNote(item) {
@@ -72,7 +59,7 @@ function decodeNote(item) {
   };
 }
 
-async function listNotes(event) {
+async function listNotes(event, clinicId) {
   const pageKey = event.queryStringParameters?.pageKey;
 
   if (!pageKey) {
@@ -84,7 +71,7 @@ async function listNotes(event) {
       TableName: tableName,
       KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: {
-        ":pk": { S: `PAGE#${pageKey}` },
+        ":pk": { S: `CLINIC#${clinicId}#PAGE#${pageKey}` },
       },
       Limit: 50,
       ScanIndexForward: false,
@@ -96,9 +83,9 @@ async function listNotes(event) {
   });
 }
 
-async function createNote(event) {
-  const claims = assertAuthorized(event);
-  const body = JSON.parse(event.body ?? "{}");
+async function createNote(event, clinicId) {
+  const actor = getActor(event);
+  const body = parseBody(event);
   const comment = String(body.comment ?? "").trim();
   const pageKey = String(body.pageKey ?? "").trim();
   const pageLabel = String(body.pageLabel ?? "").trim();
@@ -120,16 +107,32 @@ async function createNote(event) {
     });
   }
 
+  if (patientId) {
+    const patientResult = await dynamo.send(
+      new GetItemCommand({
+        TableName: patientsTableName,
+        Key: marshall({ patientId }),
+      })
+    );
+    const patient = patientResult.Item
+      ? unmarshall(patientResult.Item)
+      : undefined;
+    if (!patient || patient.clinicId !== clinicId) {
+      return response(404, { message: "Patient not found." });
+    }
+  }
+
   const createdAt = new Date().toISOString();
   const noteId = `note-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const item = {
-    pk: { S: `PAGE#${pageKey}` },
+    pk: { S: `CLINIC#${clinicId}#PAGE#${pageKey}` },
     sk: { S: `NOTE#${createdAt}#${noteId}` },
     authorDisplayName: {
-      S: claims.name || claims.email || claims.sub || "Clinician User",
+      S: actor.displayName,
     },
-    authorEmail: claims.email ? { S: claims.email } : undefined,
-    authorSub: { S: claims.sub || "unknown-user" },
+    authorEmail: actor.email ? { S: actor.email } : undefined,
+    authorSub: { S: actor.userSub },
+    clinicId: { S: clinicId },
     comment: { S: comment },
     createdAt: { S: createdAt },
     exerciseType: exerciseType ? { S: exerciseType } : undefined,
@@ -155,21 +158,26 @@ async function createNote(event) {
 
 exports.handler = async (event) => {
   try {
+    const isWrite = event.requestContext?.http?.method === "POST";
+    const { membership } = await resolveClinicAccess({
+      clinicsTableName,
+      dynamo,
+      event,
+      membershipsTableName,
+      allowedRoles: isWrite ? ["clinic-admin", "clinician"] : undefined,
+    });
+
     if (event.requestContext?.http?.method === "GET") {
-      return await listNotes(event);
+      return await listNotes(event, membership.clinicId);
     }
 
     if (event.requestContext?.http?.method === "POST") {
-      return await createNote(event);
+      return await createNote(event, membership.clinicId);
     }
 
     return response(405, { message: "Method not allowed." });
   } catch (error) {
-    if (error && typeof error === "object" && "statusCode" in error) {
-      return response(error.statusCode, { message: error.message });
-    }
-
     console.error("Feedback handler failed", error);
-    return response(500, { message: "Unexpected feedback service error." });
+    return errorResponse(error, "Unexpected feedback service error.");
   }
 };

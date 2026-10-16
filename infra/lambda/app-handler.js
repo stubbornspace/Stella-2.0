@@ -1,19 +1,38 @@
 "use strict";
 
+const { randomUUID } = require("crypto");
 const {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
-  ScanCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+const {
+  errorResponse,
+  httpError,
+  resolveClinicAccess,
+} = require("./clinic-auth");
 
 const dynamo = new DynamoDBClient({});
 
 const patientsTableName = process.env.PATIENTS_TABLE_NAME;
 const sessionsTableName = process.env.SESSIONS_TABLE_NAME;
+const clinicsTableName = process.env.CLINICS_TABLE_NAME;
+const membershipsTableName = process.env.MEMBERSHIPS_TABLE_NAME;
+const patientsByClinicIndex = process.env.PATIENTS_BY_CLINIC_INDEX;
+const sessionsByClinicIndex = process.env.SESSIONS_BY_CLINIC_INDEX;
 const demoToday = new Date("2026-09-15T12:00:00");
+const activeExerciseTypes = new Set([
+  "letter-target",
+  "letter-find",
+  "eye-pong",
+  "inhibition-challenge",
+]);
+
+function isActiveSession(session) {
+  return activeExerciseTypes.has(session.activity);
+}
 
 function response(statusCode, body) {
   return {
@@ -29,21 +48,30 @@ function parseBody(event) {
   try {
     return JSON.parse(event.body ?? "{}");
   } catch {
-    throw new Error("Invalid request body.");
+    throw httpError(400, "Invalid request body.");
   }
 }
 
-function scanAll(tableName) {
+function queryByClinic(
+  tableName,
+  indexName,
+  clinicId,
+  scanIndexForward = true,
+) {
   return (async () => {
     const items = [];
     let exclusiveStartKey;
 
     do {
       const result = await dynamo.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: tableName,
+          IndexName: indexName,
+          KeyConditionExpression: "clinicId = :clinicId",
+          ExpressionAttributeValues: { ":clinicId": { S: clinicId } },
           ExclusiveStartKey: exclusiveStartKey,
-        })
+          ScanIndexForward: scanIndexForward,
+        }),
       );
 
       items.push(...(result.Items ?? []).map((item) => unmarshall(item)));
@@ -52,6 +80,24 @@ function scanAll(tableName) {
 
     return items;
   })();
+}
+
+function queryClinicPatients(clinicId) {
+  return queryByClinic(
+    patientsTableName,
+    patientsByClinicIndex,
+    clinicId,
+    false,
+  );
+}
+
+function queryClinicSessions(clinicId) {
+  return queryByClinic(
+    sessionsTableName,
+    sessionsByClinicIndex,
+    clinicId,
+    false,
+  ).then((sessions) => sessions.filter(isActiveSession));
 }
 
 async function queryPatientSessions(patientId) {
@@ -68,14 +114,14 @@ async function queryPatientSessions(patientId) {
         }),
         ExclusiveStartKey: exclusiveStartKey,
         ScanIndexForward: false,
-      })
+      }),
     );
 
     items.push(...(result.Items ?? []).map((item) => unmarshall(item)));
     exclusiveStartKey = result.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  return items;
+  return items.filter(isActiveSession);
 }
 
 async function getPatientById(patientId) {
@@ -83,10 +129,15 @@ async function getPatientById(patientId) {
     new GetItemCommand({
       TableName: patientsTableName,
       Key: marshall({ patientId }),
-    })
+    }),
   );
 
   return result.Item ? unmarshall(result.Item) : undefined;
+}
+
+async function getClinicPatient(patientId, clinicId) {
+  const patient = await getPatientById(patientId);
+  return patient?.clinicId === clinicId ? patient : undefined;
 }
 
 function sessionDateValue(session) {
@@ -113,15 +164,15 @@ function getNextPatientCode(patients) {
 
 function computePatientStats(patients, sessions) {
   const activeThreshold = new Date(
-    demoToday.getTime() - 30 * 24 * 60 * 60 * 1000
+    demoToday.getTime() - 30 * 24 * 60 * 60 * 1000,
   ).getTime();
 
   return patients.map((patient) => {
     const patientSessions = sessions.filter(
-      (session) => session.patientId === patient.id
+      (session) => session.patientId === patient.id,
     );
     const lastSession = patientSessions.toSorted(
-      (left, right) => sessionDateValue(right) - sessionDateValue(left)
+      (left, right) => sessionDateValue(right) - sessionDateValue(left),
     )[0];
 
     return {
@@ -153,14 +204,68 @@ function clamp(value, minimum, maximum) {
 
 const keyboardLayouts = {
   qwerty: [
-    "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
-    "A", "S", "D", "F", "G", "H", "J", "K", "L", "",
-    "", "Z", "X", "C", "V", "B", "N", "M", "", "",
+    "Q",
+    "W",
+    "E",
+    "R",
+    "T",
+    "Y",
+    "U",
+    "I",
+    "O",
+    "P",
+    "A",
+    "S",
+    "D",
+    "F",
+    "G",
+    "H",
+    "J",
+    "K",
+    "L",
+    "",
+    "",
+    "Z",
+    "X",
+    "C",
+    "V",
+    "B",
+    "N",
+    "M",
+    "",
+    "",
   ],
   alphabetical: [
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-    "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-    "", "", "U", "V", "W", "X", "Y", "Z", "", "",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "",
+    "",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "",
+    "",
   ],
 };
 
@@ -223,24 +328,33 @@ function keyMissMetrics(targetKeyId, pressedKeyId) {
   return {
     direction:
       Math.abs(columnDelta) >= Math.abs(rowDelta)
-        ? columnDelta < 0 ? "left" : "right"
-        : rowDelta < 0 ? "above" : "below",
+        ? columnDelta < 0
+          ? "left"
+          : "right"
+        : rowDelta < 0
+          ? "above"
+          : "below",
     distance: Math.sqrt(columnDelta ** 2 + rowDelta ** 2),
   };
 }
 
-function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = []) {
+function computeLetterMetrics(
+  stats,
+  keyboardLayout,
+  audioMode,
+  selectedWords = [],
+) {
   const totalAttempts = stats.reduce((sum, stat) => sum + stat.attempts, 0);
   const incorrectAttempts = stats.reduce(
     (sum, stat) => sum + Math.max(0, stat.attempts - 1),
-    0
+    0,
   );
   const correctHits = stats.length;
   const firstAttemptSuccessRatePercent =
     correctHits > 0
       ? round(
           (stats.filter((stat) => stat.attempts === 1).length / correctHits) *
-            100
+            100,
         )
       : 0;
   const correctLatencies = stats.map((stat) => stat.timeMs);
@@ -252,10 +366,16 @@ function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = 
 
   for (const stat of stats) {
     const attempts = stat.attemptEvents ?? [];
-    const firstLatency = timestampDifference(stat.targetStartedAt, attempts[0]?.timestamp);
+    const firstLatency = timestampDifference(
+      stat.targetStartedAt,
+      attempts[0]?.timestamp,
+    );
     if (firstLatency != null) firstResponseLatencies.push(firstLatency);
     for (const attempt of attempts) {
-      const latency = timestampDifference(stat.targetStartedAt, attempt.timestamp);
+      const latency = timestampDifference(
+        stat.targetStartedAt,
+        attempt.timestamp,
+      );
       if (latency != null) attemptLatencies.push(latency);
       if (attempt.correct) continue;
       const targetKeyId = letterToKey[stat.letter];
@@ -275,15 +395,19 @@ function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = 
       return {
         beat: audioMode,
         firstAttemptAccuracyPercent: round(
-          letterStats.filter((stat) => stat.attempts === 1).length /
-            letterStats.length * 100,
+          (letterStats.filter((stat) => stat.attempts === 1).length /
+            letterStats.length) *
+            100,
         ),
         incorrectAttempts: letterStats.reduce(
-          (sum, stat) => sum + Math.max(0, stat.attempts - 1), 0,
+          (sum, stat) => sum + Math.max(0, stat.attempts - 1),
+          0,
         ),
         keyId: letterToKey[letter],
         letter,
-        meanCorrectLatencyMs: round(mean(letterStats.map((stat) => stat.timeMs))),
+        meanCorrectLatencyMs: round(
+          mean(letterStats.map((stat) => stat.timeMs)),
+        ),
         trials: letterStats.length,
       };
     });
@@ -299,21 +423,26 @@ function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = 
     const intervals = completedTimes
       .slice(1)
       .map((value, index) => value - completedTimes[index]);
-    return [{
-      beat: audioMode,
-      completionTimeMs: timestampDifference(
-        wordStats[0]?.targetStartedAt,
-        wordStats[wordStats.length - 1]?.completedAt,
-      ),
-      firstAttemptAccuracyPercent: round(
-        wordStats.filter((stat) => stat.attempts === 1).length /
-          wordStats.length * 100,
-      ),
-      interKeyIntervalMs: intervals.length ? round(mean(intervals)) : undefined,
-      length: word.length,
-      trials: wordStats.length,
-      word,
-    }];
+    return [
+      {
+        beat: audioMode,
+        completionTimeMs: timestampDifference(
+          wordStats[0]?.targetStartedAt,
+          wordStats[wordStats.length - 1]?.completedAt,
+        ),
+        firstAttemptAccuracyPercent: round(
+          (wordStats.filter((stat) => stat.attempts === 1).length /
+            wordStats.length) *
+            100,
+        ),
+        interKeyIntervalMs: intervals.length
+          ? round(mean(intervals))
+          : undefined,
+        length: word.length,
+        trials: wordStats.length,
+        word,
+      },
+    ];
   });
 
   let sequenceOffset = 0;
@@ -324,36 +453,49 @@ function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = 
     const firstErrorPosition = wordStats.findIndex((stat) => stat.attempts > 1);
     if (firstErrorPosition >= 0) {
       const position = firstErrorPosition + 1;
-      breakdownPointCounts[position] = (breakdownPointCounts[position] ?? 0) + 1;
+      breakdownPointCounts[position] =
+        (breakdownPointCounts[position] ?? 0) + 1;
     }
-    return { item: index + 1, lettersCompleted: wordStats.length, lettersInItem: word.length };
+    return {
+      item: index + 1,
+      lettersCompleted: wordStats.length,
+      lettersInItem: word.length,
+    };
   });
-  const dominantDirection = Object.entries(errorDirectionCounts)
-    .sort((left, right) => right[1] - left[1])[0];
-  const dominantBreakdown = Object.entries(breakdownPointCounts)
-    .sort((left, right) => right[1] - left[1])[0];
+  const dominantDirection = Object.entries(errorDirectionCounts).sort(
+    (left, right) => right[1] - left[1],
+  )[0];
+  const dominantBreakdown = Object.entries(breakdownPointCounts).sort(
+    (left, right) => right[1] - left[1],
+  )[0];
 
   return {
     byKey,
     byWord,
     correctHits,
     directionalConsistencyPercent: dominantDirection
-      ? round(dominantDirection[1] / incorrectAttempts * 100)
+      ? round((dominantDirection[1] / incorrectAttempts) * 100)
       : undefined,
     dominantErrorDirection: dominantDirection?.[0],
     errorDirectionCounts,
     firstAttemptSuccessRatePercent,
     incorrectAttempts,
-    latencyIqrMs: correctLatencies.length > 3
-      ? round(percentile(correctLatencies, 0.75) - percentile(correctLatencies, 0.25))
-      : undefined,
+    latencyIqrMs:
+      correctLatencies.length > 3
+        ? round(
+            percentile(correctLatencies, 0.75) -
+              percentile(correctLatencies, 0.25),
+          )
+        : undefined,
     latencyVariabilityStdDev: round(standardDeviation(correctLatencies)),
     meanCorrectLatencyMs: round(mean(correctLatencies)),
     meanFirstResponseLatencyMs: round(mean(firstResponseLatencies)),
     meanIncorrectAttemptsPerTrial: correctHits
       ? round(incorrectAttempts / correctHits, 2)
       : 0,
-    meanMissDistance: missDistances.length ? round(mean(missDistances), 2) : undefined,
+    meanMissDistance: missDistances.length
+      ? round(mean(missDistances), 2)
+      : undefined,
     meanResponseLatencyMs: round(mean(attemptLatencies)),
     medianCorrectLatencyMs: round(median(correctLatencies)),
     mostCommonBreakdownPosition: dominantBreakdown
@@ -361,9 +503,13 @@ function computeLetterMetrics(stats, keyboardLayout, audioMode, selectedWords = 
       : undefined,
     responseLatencyStdDev: round(standardDeviation(attemptLatencies)),
     sequenceCompletionRatePercent: sequencePerformance.length
-      ? round(sequencePerformance.filter(
-          (item) => item.lettersCompleted === item.lettersInItem,
-        ).length / sequencePerformance.length * 100)
+      ? round(
+          (sequencePerformance.filter(
+            (item) => item.lettersCompleted === item.lettersInItem,
+          ).length /
+            sequencePerformance.length) *
+            100,
+        )
       : undefined,
     sequencePerformance,
     totalAttempts,
@@ -412,21 +558,16 @@ function computeBeatMetrics(stats, actualBpm) {
     (offset) => Math.abs(offset) <= toleranceMs,
   ).length;
   const meanOffset =
-    signedOffsets.reduce((sum, value) => sum + value, 0) /
-    signedOffsets.length;
+    signedOffsets.reduce((sum, value) => sum + value, 0) / signedOffsets.length;
   const timingVariabilityStdDev = round(
     Math.sqrt(
-      signedOffsets.reduce(
-        (sum, value) => sum + (value - meanOffset) ** 2,
-        0,
-      ) / signedOffsets.length,
+      signedOffsets.reduce((sum, value) => sum + (value - meanOffset) ** 2, 0) /
+        signedOffsets.length,
     ),
   );
 
   return {
-    onBeatAccuracyPercent: round(
-      (onBeatHits / signedOffsets.length) * 100,
-    ),
+    onBeatAccuracyPercent: round((onBeatHits / signedOffsets.length) * 100),
     timingVariabilityStdDev,
   };
 }
@@ -458,7 +599,10 @@ function buildSessionFromResult({
     pauseBreakCount: 0,
     rawEventPayload: result,
     keyboardLayout: result.keyboardLayout ?? setup.keyboardLayout ?? "qwerty",
-    keyboardSide: result.keyboardSide ?? setup.keyboardSide ?? "full",
+    keyboardSide:
+      result.activity === "eye-pong" && result.mode === "left-right"
+        ? "full"
+        : (result.keyboardSide ?? setup.keyboardSide ?? "full"),
     keyLabels:
       result.activity === "letter-find"
         ? "letters"
@@ -603,7 +747,9 @@ function buildSessionFromResult({
   }
 
   const itemsTotal =
-    setup.contentMode === "letters" ? setup.numberOfLetters : setup.numberOfWords;
+    setup.contentMode === "letters"
+      ? setup.numberOfLetters
+      : setup.numberOfWords;
   const itemsCompleted = Math.min(completedUnits, itemsTotal);
   const metrics = computeLetterMetrics(
     result.stats ?? [],
@@ -622,10 +768,13 @@ function buildSessionFromResult({
     ...metrics,
     eventualAccuracyPercent: metrics.correctHits > 0 ? 100 : 0,
     itemCompletionRatePercent:
-      itemsTotal > 0 ? round(itemsCompleted / itemsTotal * 100) : 0,
+      itemsTotal > 0 ? round((itemsCompleted / itemsTotal) * 100) : 0,
   };
 
-  if (result.activity === "letter-target" && setup.activity === "letter-target") {
+  if (
+    result.activity === "letter-target" &&
+    setup.activity === "letter-target"
+  ) {
     return {
       ...baseSession,
       activity: "letter-target",
@@ -642,7 +791,8 @@ function buildSessionFromResult({
       onBeatAccuracyPercent: beatMetrics.onBeatAccuracyPercent,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
       timingVariabilityStdDev: beatMetrics.timingVariabilityStdDev,
-      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+      wordLength:
+        result.contentMode === "words" ? result.wordLength : undefined,
     };
   }
 
@@ -661,7 +811,8 @@ function buildSessionFromResult({
       musicPlaybackRate:
         result.audioMode === "music" ? setup.musicPlaybackRate : undefined,
       tempoBpm: result.audioMode === "metronome" ? setup.tempoBpm : undefined,
-      wordLength: result.contentMode === "words" ? result.wordLength : undefined,
+      wordLength:
+        result.contentMode === "words" ? result.wordLength : undefined,
     };
   }
 
@@ -709,7 +860,10 @@ function buildSessionFromRun({
     pauseBreakCount: 0,
     rawEventPayload: null,
     keyboardLayout: setup.keyboardLayout ?? "qwerty",
-    keyboardSide: setup.keyboardSide ?? "full",
+    keyboardSide:
+      setup.activity === "eye-pong" && setup.mode === "left-right"
+        ? "full"
+        : (setup.keyboardSide ?? "full"),
     keyLabels:
       setup.activity === "letter-find"
         ? "letters"
@@ -740,8 +894,7 @@ function buildSessionFromRun({
         wordLength:
           setup.contentMode === "words" ? setup.wordLength : undefined,
         audioMode: setup.audioMode,
-        tempoBpm:
-          setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
+        tempoBpm: setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
         musicPlaybackRate:
           setup.audioMode === "music" ? setup.musicPlaybackRate : undefined,
         itemsCompleted: completed,
@@ -757,8 +910,7 @@ function buildSessionFromRun({
           setup.audioMode === "silent"
             ? undefined
             : clamp(accuracyPercent - 6, 0, 100),
-        timingVariabilityStdDev:
-          setup.audioMode === "silent" ? undefined : 122,
+        timingVariabilityStdDev: setup.audioMode === "silent" ? undefined : 122,
         directionalConsistencyPercent: 88,
         attemptsPerMinute,
       };
@@ -779,8 +931,7 @@ function buildSessionFromRun({
         meanCorrectLatencyMs: 1010,
         incorrectAttempts,
         audioMode: setup.audioMode,
-        tempoBpm:
-          setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
+        tempoBpm: setup.audioMode === "metronome" ? setup.tempoBpm : undefined,
         musicPlaybackRate:
           setup.audioMode === "music" ? setup.musicPlaybackRate : undefined,
         attemptsPerMinute,
@@ -808,7 +959,7 @@ function buildSessionFromRun({
     const completionRate = clamp(
       completedUnits / Math.max(setup.trialCount, 1),
       0,
-      1
+      1,
     );
     const goAccuracyPercent = round(76 + completionRate * 16);
     const noGoAccuracyPercent = round(74 + completionRate * 14);
@@ -829,7 +980,7 @@ function buildSessionFromRun({
   } else {
     const completedSequences = Math.min(completedUnits, setup.sequenceCount);
     const completionRatePercent = round(
-      (completedSequences / Math.max(setup.sequenceCount, 1)) * 100
+      (completedSequences / Math.max(setup.sequenceCount, 1)) * 100,
     );
 
     session = {
@@ -844,7 +995,7 @@ function buildSessionFromRun({
       firstAttemptSequenceAccuracyPercent: clamp(
         completionRatePercent - 8,
         0,
-        100
+        100,
       ),
       longestCompletedSequence:
         completedSequences === 0
@@ -853,11 +1004,11 @@ function buildSessionFromRun({
             ? setup.sequenceLength
             : Math.max(1, setup.sequenceLength - 1),
       meanCompletionTimeMs: round(
-        (60000 / setup.presentationSpeedBpm) * setup.sequenceLength
+        (60000 / setup.presentationSpeedBpm) * setup.sequenceLength,
       ),
       attemptsPerMinute: round(
         (completedSequences * setup.sequenceLength) / durationMinutes,
-        1
+        1,
       ),
     };
   }
@@ -865,46 +1016,46 @@ function buildSessionFromRun({
   return session;
 }
 
-async function listPatients() {
+async function listPatients(clinicId) {
   const [patients, sessions] = await Promise.all([
-    scanAll(patientsTableName),
-    scanAll(sessionsTableName),
+    queryClinicPatients(clinicId),
+    queryClinicSessions(clinicId),
   ]);
 
   return computePatientStats(patients, sessions);
 }
 
-async function getDashboardStats() {
+async function getDashboardStats(clinicId) {
   const [patients, sessions] = await Promise.all([
-    scanAll(patientsTableName),
-    scanAll(sessionsTableName),
+    queryClinicPatients(clinicId),
+    queryClinicSessions(clinicId),
   ]);
   const startOfCurrentMonth = startOfMonthValue(demoToday);
   const activeThreshold = new Date(
-    demoToday.getTime() - 30 * 24 * 60 * 60 * 1000
+    demoToday.getTime() - 30 * 24 * 60 * 60 * 1000,
   ).getTime();
   const activePatientIds = new Set(
     sessions
       .filter((session) => sessionDateValue(session) >= activeThreshold)
-      .map((session) => session.patientId)
+      .map((session) => session.patientId),
   );
 
   return {
     totalPatients: patients.length,
     totalSessions: sessions.length,
     sessionsThisMonth: sessions.filter(
-      (session) => sessionDateValue(session) >= startOfCurrentMonth
+      (session) => sessionDateValue(session) >= startOfCurrentMonth,
     ).length,
     activePatients: patients.filter((patient) =>
-      activePatientIds.has(patient.id)
+      activePatientIds.has(patient.id),
     ).length,
   };
 }
 
-async function createPatient(input) {
+async function createPatient(input, clinicId) {
   const firstName = String(input.firstName ?? "").trim();
   const lastName = String(input.lastName ?? "").trim();
-  const notes = String(input.notes ?? "").trim();
+  const requestedPatientCode = String(input.patientCode ?? "").trim();
 
   if (!firstName || !lastName) {
     return response(400, {
@@ -912,16 +1063,36 @@ async function createPatient(input) {
     });
   }
 
-  const patients = await scanAll(patientsTableName);
-  const patientCode = getNextPatientCode(patients);
+  if (requestedPatientCode.length > 64) {
+    return response(400, {
+      message: "patientCode must be 64 characters or fewer.",
+    });
+  }
+
+  const patients = await queryClinicPatients(clinicId);
+  const patientCode = requestedPatientCode || getNextPatientCode(patients);
+  const duplicatePatientCode = patients.some(
+    (patient) =>
+      String(patient.patientCode ?? "")
+        .trim()
+        .toLowerCase() === patientCode.toLowerCase(),
+  );
+  if (duplicatePatientCode) {
+    return response(409, {
+      message: `Patient ID ${patientCode} is already in use.`,
+    });
+  }
+  const createdAt = new Date().toISOString();
+  const patientId = `patient-${randomUUID()}`;
   const patient = {
-    patientId: patientCode.toLowerCase(),
-    id: patientCode.toLowerCase(),
+    patientId,
+    id: patientId,
+    clinicId,
+    clinicPatientKey: `${createdAt}#${patientId}`,
     patientCode,
     firstName,
     lastName,
-    notes: notes || undefined,
-    createdAt: new Date().toISOString(),
+    createdAt,
   };
 
   await dynamo.send(
@@ -930,7 +1101,7 @@ async function createPatient(input) {
       Item: marshall(patient, {
         removeUndefinedValues: true,
       }),
-    })
+    }),
   );
 
   return response(201, {
@@ -939,7 +1110,51 @@ async function createPatient(input) {
   });
 }
 
-async function saveSession(input) {
+async function updateSessionNotes(input, patientId, sessionId, clinicId) {
+  if (!patientId || !sessionId) {
+    return response(400, {
+      message: "patientId and sessionId are required.",
+    });
+  }
+
+  if (typeof input.sessionNotes !== "string") {
+    return response(400, { message: "sessionNotes must be a string." });
+  }
+
+  const sessionNotes = input.sessionNotes.trim();
+  if (sessionNotes.length > 2000) {
+    return response(400, {
+      message: "sessionNotes must be 2,000 characters or fewer.",
+    });
+  }
+
+  if (!(await getClinicPatient(patientId, clinicId))) {
+    return response(404, { message: "Patient not found." });
+  }
+
+  const sessions = await queryPatientSessions(patientId);
+  const session = sessions.find(
+    (item) => item.sessionId === sessionId && item.clinicId === clinicId,
+  );
+  if (!session) {
+    return response(404, { message: "Session not found." });
+  }
+
+  const updatedSession = {
+    ...session,
+    sessionNotes: sessionNotes || undefined,
+  };
+  await dynamo.send(
+    new PutItemCommand({
+      TableName: sessionsTableName,
+      Item: marshall(updatedSession, { removeUndefinedValues: true }),
+    }),
+  );
+
+  return response(200, updatedSession);
+}
+
+async function saveSession(input, clinicId) {
   const patientId = String(input.patientId ?? "").trim();
 
   if (!patientId || !input.setup || !input.status) {
@@ -949,7 +1164,11 @@ async function saveSession(input) {
     });
   }
 
-  const patient = await getPatientById(patientId);
+  if (!activeExerciseTypes.has(input.setup.activity)) {
+    return response(400, { message: "Unsupported exercise activity." });
+  }
+
+  const patient = await getClinicPatient(patientId, clinicId);
 
   if (!patient) {
     return response(404, { message: "Patient not found." });
@@ -963,11 +1182,12 @@ async function saveSession(input) {
       Item: marshall(
         {
           ...session,
+          clinicId,
           patientId,
         },
-        { removeUndefinedValues: true }
+        { removeUndefinedValues: true },
       ),
-    })
+    }),
   );
 
   return response(201, session);
@@ -975,22 +1195,36 @@ async function saveSession(input) {
 
 async function handler(event) {
   const routeKey = event.routeKey;
+  const writeRoute =
+    routeKey === "POST /patients" ||
+    routeKey === "POST /sessions" ||
+    routeKey === "PATCH /patients/{patientId}/sessions/{sessionId}";
+  const { membership } = await resolveClinicAccess({
+    clinicsTableName,
+    dynamo,
+    event,
+    membershipsTableName,
+    allowedRoles: writeRoute ? ["clinic-admin", "clinician"] : undefined,
+  });
+  const clinicId = membership.clinicId;
 
   if (routeKey === "GET /dashboard") {
-    return response(200, await getDashboardStats());
+    return response(200, await getDashboardStats(clinicId));
   }
 
   if (routeKey === "GET /patients") {
-    return response(200, await listPatients());
+    return response(200, await listPatients(clinicId));
   }
 
   if (routeKey === "POST /patients") {
-    return createPatient(parseBody(event));
+    return createPatient(parseBody(event), clinicId);
   }
 
   if (routeKey === "GET /patients/{patientId}") {
     const patientId = String(event.pathParameters?.patientId ?? "").trim();
-    const patient = patientId ? await getPatientById(patientId) : undefined;
+    const patient = patientId
+      ? await getClinicPatient(patientId, clinicId)
+      : undefined;
 
     if (!patient) {
       return response(404, { message: "Patient not found." });
@@ -1006,12 +1240,20 @@ async function handler(event) {
       return response(400, { message: "patientId is required." });
     }
 
+    if (!(await getClinicPatient(patientId, clinicId))) {
+      return response(404, { message: "Patient not found." });
+    }
+
     return response(200, await queryPatientSessions(patientId));
   }
 
-  if (routeKey === "GET /patients/{patientId}/exercises/{exerciseType}/sessions") {
+  if (
+    routeKey === "GET /patients/{patientId}/exercises/{exerciseType}/sessions"
+  ) {
     const patientId = String(event.pathParameters?.patientId ?? "").trim();
-    const exerciseType = String(event.pathParameters?.exerciseType ?? "").trim();
+    const exerciseType = String(
+      event.pathParameters?.exerciseType ?? "",
+    ).trim();
 
     if (!patientId || !exerciseType) {
       return response(400, {
@@ -1019,16 +1261,28 @@ async function handler(event) {
       });
     }
 
+    if (!(await getClinicPatient(patientId, clinicId))) {
+      return response(404, { message: "Patient not found." });
+    }
+
     const sessions = await queryPatientSessions(patientId);
     const filteredSessions = sessions
       .filter((session) => session.activity === exerciseType)
-      .toSorted((left, right) => sessionDateValue(left) - sessionDateValue(right));
+      .toSorted(
+        (left, right) => sessionDateValue(left) - sessionDateValue(right),
+      );
 
     return response(200, filteredSessions);
   }
 
+  if (routeKey === "PATCH /patients/{patientId}/sessions/{sessionId}") {
+    const patientId = String(event.pathParameters?.patientId ?? "").trim();
+    const sessionId = String(event.pathParameters?.sessionId ?? "").trim();
+    return updateSessionNotes(parseBody(event), patientId, sessionId, clinicId);
+  }
+
   if (routeKey === "POST /sessions") {
-    return saveSession(parseBody(event));
+    return saveSession(parseBody(event), clinicId);
   }
 
   return response(405, { message: "Method not allowed." });
@@ -1039,11 +1293,6 @@ exports.handler = async (event) => {
     return await handler(event);
   } catch (error) {
     console.error("App handler failed", error);
-    return response(500, {
-      message:
-        error instanceof Error
-          ? error.message
-          : "Unexpected Stella data service error.",
-    });
+    return errorResponse(error, "Unexpected Stella data service error.");
   }
 };

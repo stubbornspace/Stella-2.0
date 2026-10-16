@@ -63,6 +63,7 @@ export function DeviceRuntimePage({
     completedUnits: number
     result: ExerciseRunResult
     runStatus: "completed" | "ended-early"
+    sessionId: string
   } | null>(null)
   const activeStartedAtRef = useRef<number | null>(null)
   const activeSessionRef = useRef<string | null>(null)
@@ -115,7 +116,7 @@ export function DeviceRuntimePage({
         const completedUnits = getDeviceCompletedUnits(payload)
         const runStatus = getDeviceRunStatus(payload)
 
-        await saveExerciseRun({
+        const savedSession = await saveExerciseRun({
           patientId,
           setup: pendingRun.setup,
           status: runStatus,
@@ -127,7 +128,12 @@ export function DeviceRuntimePage({
 
         clearPendingExerciseRun(patientId, validActivity)
         activeSessionRef.current = null
-        setFinishedRun({ completedUnits, result: finalResult, runStatus })
+        setFinishedRun({
+          completedUnits,
+          result: finalResult,
+          runStatus,
+          sessionId: savedSession.sessionId,
+        })
         setPageStatus("finished")
         onToast(
           `${exerciseDefinitions[validActivity].label} results received from the device and saved.`
@@ -300,6 +306,7 @@ export function DeviceRuntimePage({
         patientName={patientName}
         result={finishedRun.result}
         runStatus={finishedRun.runStatus}
+        sessionId={finishedRun.sessionId}
         setup={pendingRun.setup}
         totalUnits={totalUnits}
       />

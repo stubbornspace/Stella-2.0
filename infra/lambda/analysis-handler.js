@@ -11,6 +11,10 @@ const {
   QueryCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+const {
+  errorResponse,
+  resolveClinicAccess,
+} = require("./clinic-auth");
 
 const dynamo = new DynamoDBClient({});
 const bedrock = new BedrockRuntimeClient({});
@@ -18,6 +22,8 @@ const bedrock = new BedrockRuntimeClient({});
 const patientsTableName = process.env.PATIENTS_TABLE_NAME;
 const sessionsTableName = process.env.SESSIONS_TABLE_NAME;
 const analysisTableName = process.env.ANALYSIS_TABLE_NAME;
+const membershipsTableName = process.env.MEMBERSHIPS_TABLE_NAME;
+const clinicsTableName = process.env.CLINICS_TABLE_NAME;
 const modelId = process.env.BEDROCK_MODEL_ID || "us.amazon.nova-lite-v1:0";
 
 const exerciseMetadata = {
@@ -44,12 +50,6 @@ const exerciseMetadata = {
     metricFormat: "percent",
     metricKey: "noGoAccuracyPercent",
     metricLabel: "No-go accuracy",
-  },
-  "motor-sequence-builder": {
-    label: "Motor Sequence Builder",
-    metricFormat: "percent",
-    metricKey: "sequenceCompletionRatePercent",
-    metricLabel: "Sequence completion",
   },
 };
 
@@ -132,7 +132,7 @@ async function queryPatientSessions(patientId) {
     exclusiveStartKey = result.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  return items;
+  return items.filter((session) => exerciseMetadata[session.activity]);
 }
 
 function averageMetric(sessions, key) {
@@ -621,10 +621,10 @@ function mergeNarrative({
   };
 }
 
-async function buildAnalysis(patientId) {
+async function buildAnalysis(patientId, clinicId) {
   const patient = await getPatientById(patientId);
 
-  if (!patient) {
+  if (!patient || patient.clinicId !== clinicId) {
     return {
       error: response(404, {
         message: "Patient not found.",
@@ -692,6 +692,7 @@ async function buildAnalysis(patientId) {
 
   return {
     analysis: {
+      clinicId,
       patientId,
       ...merged,
     },
@@ -711,10 +712,25 @@ async function getSavedAnalysis(patientId) {
 
 exports.handler = async (event) => {
   try {
+    const { membership } = await resolveClinicAccess({
+      clinicsTableName,
+      dynamo,
+      event,
+      membershipsTableName,
+      allowedRoles:
+        event.routeKey === "POST /patients/{patientId}/analysis"
+          ? ["clinic-admin", "clinician"]
+          : undefined,
+    });
     const patientId = String(event.pathParameters?.patientId ?? "").trim();
 
     if (!patientId) {
       return response(400, { message: "patientId is required." });
+    }
+
+    const patient = await getPatientById(patientId);
+    if (!patient || patient.clinicId !== membership.clinicId) {
+      return response(404, { message: "Patient not found." });
     }
 
     if (event.routeKey === "GET /patients/{patientId}/analysis") {
@@ -724,7 +740,7 @@ exports.handler = async (event) => {
     }
 
     if (event.routeKey === "POST /patients/{patientId}/analysis") {
-      const result = await buildAnalysis(patientId);
+      const result = await buildAnalysis(patientId, membership.clinicId);
 
       if (result.error) {
         return result.error;
@@ -745,11 +761,6 @@ exports.handler = async (event) => {
     return response(405, { message: "Method not allowed." });
   } catch (error) {
     console.error("Analysis handler failed", error);
-    return response(500, {
-      message:
-        error instanceof Error
-          ? error.message
-          : "Unexpected Stella analysis service error.",
-    });
+    return errorResponse(error, "Unexpected Stella analysis service error.");
   }
 };

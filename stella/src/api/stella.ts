@@ -1,9 +1,10 @@
 import { startOfMonth, subDays } from "date-fns"
 
-import { exerciseDefinitions } from "@/config/exercises"
+import { exerciseTypes } from "@/config/exercises"
 import { seedPatients, seedSessions } from "@/data/seed"
 import { getValidIdToken } from "@/lib/auth"
 import { getRuntimeConfig } from "@/lib/runtime-config"
+import { getSelectedClinicId } from "@/lib/clinic-session"
 import type {
   DashboardStats,
   ExerciseSession,
@@ -43,7 +44,7 @@ const demoToday = new Date("2026-09-15T12:00:00")
 export type CreatePatientInput = {
   firstName: string
   lastName: string
-  notes?: string
+  patientCode?: string
 }
 
 function remoteAppEnabled() {
@@ -70,6 +71,9 @@ async function apiRequest<T>(
     headers: {
       Authorization: `Bearer ${idToken}`,
       "Content-Type": "application/json",
+      ...(getSelectedClinicId()
+        ? { "X-Stella-Clinic-Id": getSelectedClinicId() }
+        : {}),
       ...(init?.headers ?? {}),
     },
   })
@@ -129,7 +133,16 @@ function writeAddedSessions(sessions: ExerciseSession[]) {
 }
 
 function readSessions() {
-  return [...readAddedSessions(), ...seedSessions]
+  const addedSessions = readAddedSessions()
+  const addedSessionIds = new Set(
+    addedSessions.map((session) => session.sessionId)
+  )
+  return [
+    ...addedSessions,
+    ...seedSessions.filter(
+      (session) => !addedSessionIds.has(session.sessionId)
+    ),
+  ].filter((session) => exerciseTypes.includes(session.activity))
 }
 
 function fullName(patient: Patient) {
@@ -162,7 +175,17 @@ function getSessionValue(session: ExerciseSession, key: string) {
     return `${session.itemsCompleted}/${session.itemsTotal}`
   }
 
+  if (key === "keyboardSide" && session.activity === "eye-pong") {
+    return session.mode === "left-right"
+      ? "full"
+      : (session.keyboardSide ?? "full")
+  }
+
   if (key === "tempo" && "audioMode" in session) {
+    if (session.audioMode === "silent") {
+      return "-"
+    }
+
     if (session.audioMode === "music" && session.musicPlaybackRate) {
       return `${session.musicPlaybackRate.toFixed(1)}x`
     }
@@ -317,15 +340,22 @@ export async function createPatient(
 
   await delay()
   const patients = readPatients()
-  const normalizedCode = getNextPatientCode(patients)
-  const id = normalizedCode.toLowerCase()
+  const requestedCode = input.patientCode?.trim()
+  const normalizedCode = requestedCode || getNextPatientCode(patients)
+  const duplicate = patients.some(
+    (patient) =>
+      patient.patientCode.trim().toLowerCase() === normalizedCode.toLowerCase()
+  )
+  if (duplicate) {
+    throw new Error(`Patient ID ${normalizedCode} is already in use.`)
+  }
+  const id = `patient-${crypto.randomUUID()}`
 
   const patient: Patient = {
     id,
     patientCode: normalizedCode,
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
-    notes: input.notes?.trim() || undefined,
     createdAt: new Date().toISOString(),
   }
 
@@ -353,6 +383,54 @@ export async function getPatientSessions(
   return readSessions()
     .filter((session) => session.patientId === patientId)
     .toSorted((a, b) => sessionDateValue(b) - sessionDateValue(a))
+}
+
+export async function updateSessionNotes({
+  patientId,
+  sessionId,
+  sessionNotes,
+}: {
+  patientId: string
+  sessionId: string
+  sessionNotes: string
+}): Promise<ExerciseSession> {
+  const normalizedNotes = sessionNotes.trim()
+
+  if (normalizedNotes.length > 2000) {
+    throw new Error("Session notes must be 2,000 characters or fewer.")
+  }
+
+  if (remoteAppEnabled()) {
+    const session = await apiRequest<ExerciseSession>(
+      `/patients/${encodeURIComponent(patientId)}/sessions/${encodeURIComponent(sessionId)}`,
+      {
+        body: JSON.stringify({ sessionNotes: normalizedNotes }),
+        method: "PATCH",
+      }
+    )
+    if (session === undefined) {
+      throw new Error("Stella API did not return the updated session.")
+    }
+    return session
+  }
+
+  await delay()
+  const session = readSessions().find(
+    (item) => item.patientId === patientId && item.sessionId === sessionId
+  )
+  if (!session) {
+    throw new Error("Session not found.")
+  }
+
+  const updatedSession: ExerciseSession = {
+    ...session,
+    sessionNotes: normalizedNotes || undefined,
+  }
+  writeAddedSessions([
+    updatedSession,
+    ...readAddedSessions().filter((item) => item.sessionId !== sessionId),
+  ])
+  return updatedSession
 }
 
 export async function getExerciseSessions(
@@ -712,7 +790,10 @@ function buildSessionFromResult({
     pauseBreakCount: 0,
     rawEventPayload: result,
     keyboardLayout: result.keyboardLayout ?? setup.keyboardLayout ?? "qwerty",
-    keyboardSide: result.keyboardSide ?? setup.keyboardSide ?? "full",
+    keyboardSide:
+      result.activity === "eye-pong" && result.mode === "left-right"
+        ? "full"
+        : (result.keyboardSide ?? setup.keyboardSide ?? "full"),
     keyLabels:
       result.activity === "letter-find"
         ? "letters"
@@ -1030,7 +1111,10 @@ export async function saveExerciseRun({
     pauseBreakCount: 0,
     rawEventPayload: null,
     keyboardLayout: setup.keyboardLayout ?? "qwerty",
-    keyboardSide: setup.keyboardSide ?? "full",
+    keyboardSide:
+      setup.activity === "eye-pong" && setup.mode === "left-right"
+        ? "full"
+        : (setup.keyboardSide ?? "full"),
     keyLabels:
       setup.activity === "letter-find"
         ? "letters"
@@ -1198,42 +1282,18 @@ export async function saveExerciseRun({
 export function buildExerciseSummaries(
   sessions: ExerciseSession[]
 ): ExerciseSummary[] {
-  const summaries = new Map<ExerciseType, ExerciseSession[]>()
-
-  for (const session of sessions) {
-    summaries.set(session.activity, [
-      ...(summaries.get(session.activity) ?? []),
-      session,
-    ])
-  }
-
-  return Array.from(summaries.entries())
-    .map(([activity, activitySessions]) => {
-      const definition = exerciseDefinitions[activity]
-      const [primary, secondary] = definition.patientSummary
-      const sortedSessions = activitySessions.toSorted(
-        (a, b) => sessionDateValue(b) - sessionDateValue(a)
-      )
-
-      return {
-        activity,
-        sessions: activitySessions.length,
-        lastSessionDate: sortedSessions[0]?.sessionDate ?? "",
-        primaryMetric: formatMetricValue(
-          averageMetric(activitySessions, primary.key),
-          primary.format
-        ),
-        secondaryMetric: formatMetricValue(
-          averageMetric(activitySessions, secondary.key),
-          secondary.format
-        ),
-      }
-    })
-    .toSorted(
-      (a, b) =>
-        sessionDateValue({
-          sessionDate: b.lastSessionDate,
-        } as ExerciseSession) -
-        sessionDateValue({ sessionDate: a.lastSessionDate } as ExerciseSession)
+  return exerciseTypes.map((activity) => {
+    const activitySessions = sessions.filter(
+      (session) => session.activity === activity
     )
+    const sortedSessions = activitySessions.toSorted(
+      (a, b) => sessionDateValue(b) - sessionDateValue(a)
+    )
+
+    return {
+      activity,
+      sessions: activitySessions.length,
+      lastSessionDate: sortedSessions[0]?.sessionDate ?? "",
+    }
+  })
 }

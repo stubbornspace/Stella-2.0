@@ -275,29 +275,14 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
       { key: "targetChanges", label: "Targets Presented", format: "count" },
     ],
     tableColumns: [
-      { key: "keyboardLayout", label: "Layout", format: "text" },
-      { key: "keyboardSide", label: "Side", format: "text" },
-      { key: "mode", label: "Order", format: "text" },
+      { key: "keyboardSide", label: "Keyboard Side", format: "text" },
+      { key: "mode", label: "Mode", format: "text" },
       { key: "targetCount", label: "Targets", format: "count" },
-      { key: "pattern", label: "Pattern", format: "text" },
-      { key: "targetChanges", label: "Targets Presented", format: "count" },
-      {
-        key: "completionRatePercent",
-        label: "Protocol Completion",
-        format: "percent",
-      },
-      { key: "audioMode", label: "Audio", format: "text" },
-      { key: "tempo", label: "Cadence", format: "text" },
-      {
-        key: "totalSessionDurationMinutes",
-        label: "Duration",
-        format: "duration",
-      },
+      { key: "audioMode", label: "Beat", format: "text" },
+      { key: "tempo", label: "Tempo", format: "text" },
     ],
     configurationFilters: [
-      { key: "keyboardLayout", label: "Keyboard Layout" },
       { key: "keyboardSide", label: "Keyboard Side" },
-      { key: "keyLabels", label: "Key Labels" },
       { key: "mode", label: "Mode" },
       { key: "audioMode", label: "Beat" },
       { key: "tempo", label: "Tempo" },
@@ -468,4 +453,9 @@ export const exerciseDefinitions: Record<ExerciseType, ExerciseDefinition> = {
   },
 }
 
-export const exerciseTypes = Object.keys(exerciseDefinitions) as ExerciseType[]
+export const exerciseTypes: ExerciseType[] = [
+  "letter-target",
+  "letter-find",
+  "eye-pong",
+  "inhibition-challenge",
+]

@@ -10,6 +10,9 @@ As of October 10, 2026:
 - The working mock device API and keyboard web page are in `device-simulator/`.
 - Stella's client, configuration mapper, and result mapper are in `stella/src/lib/device/`.
 - Stella can select the embedded or device runtime through `stella/public/runtime-config.json`.
+- Embedded mode uses the same configuration and result contract in memory; it
+  does not make HTTP requests to itself. Simulator and physical-device modes
+  use the REST/SSE transport documented below.
 - Raspberry Pi firmware and hardware transport are not part of this repository and have not been verified here. They should implement this contract.
 
 The API uses JSON over HTTP under `/api` and Server-Sent Events (SSE) for live updates. Activity and field names on the wire use `snake_case`; Stella's internal model uses `kebab-case` activity names and `camelCase` fields.
@@ -44,12 +47,12 @@ The checked-in `runtime-config.json` remains in `embedded` mode so the hosted de
 
 | Field | Type / values | Applies to |
 |---|---|---|
-| `activity` | `letter_target`, `letter_find`, `eye_pong`, `inhibition_challenge`, `motor_sequence_builder` | All |
+| `activity` | `letter_target`, `letter_find`, `eye_pong`, `inhibition_challenge` | All |
 | `layout` | `qwerty`, `alphabetical` | All |
 | `side` | `full`, `left`, `right` | All |
 | `key_label` | `letters`, `blank` | All; Letter Find forces visible letters |
-| `content` | `letters`, `words` | Letter Target, Letter Find, Motor Sequence Builder |
-| `items` | integer 1–10 for Letter Target, Letter Find, and Eye Pong; 1–100 for Inhibition Challenge; 1–20 for Motor Sequence Builder | All |
+| `content` | `letters`, `words` | Letter Target and Letter Find |
+| `items` | integer 1–10 for Letter Target, Letter Find, and Eye Pong; 1–100 for Inhibition Challenge | All |
 | `word_length` | `0-5`, `5-10`, or `10+`; legacy exact lengths `3`–`8` are also accepted | Letter Target and Letter Find in word mode |
 | `beat` | `none`, `metronome`, `music` | All |
 | `tempo_bpm` | integer 30–120 | All |
@@ -58,13 +61,10 @@ The checked-in `runtime-config.json` remains in `embedded` mode so the hosted de
 | `timeout_ms` | integer 250–60000 | Letter Target and Letter Find |
 | `response_window_ms` | integer 500–10000 | Inhibition Challenge |
 | `nogo_percent` | integer 0–100 | Inhibition Challenge |
-| `wait_percent` | integer 0–100 | Inhibition Challenge |
-| `sequence_start_length` | integer 2–5 | Motor Sequence Builder |
-| `sequence_progression` | boolean | Motor Sequence Builder |
-| `sequence_max_length` | integer 2–5 | Motor Sequence Builder |
+| `wait_percent` | compatibility field normalized to `0` | Inhibition Challenge |
 | `participant` | string, at most 32 characters | All |
 
-Unknown fields and invalid enum values return `400`. Numeric values are rounded and clamped to the ranges above. If `nogo_percent + wait_percent` exceeds 100, `wait_percent` is reduced. `sequence_max_length` cannot be below `sequence_start_length`.
+Unknown fields and invalid enum values return `400`. Numeric values are rounded and clamped to the ranges above. Inhibition Challenge generates only Go and Stop cues; `wait_percent` is accepted for compatibility but always normalized to `0`.
 
 Example request:
 
@@ -101,7 +101,7 @@ Example response:
     "timeout_ms": 5000,
     "response_window_ms": 1500,
     "nogo_percent": 40,
-    "wait_percent": 10,
+    "wait_percent": 0,
     "sequence_start_length": 2,
     "sequence_progression": true,
     "sequence_max_length": 5,
@@ -175,7 +175,7 @@ event: board
 data: {"keys":[{"id":1,"letter":"Q","color":"idle"},{"id":11,"letter":"A","color":"waiting"}],"reason":"target","key_label":"letters"}
 ```
 
-Color values are `off`, `idle`, `waiting`, `correct`, `incorrect`, `beat`, `wait_cue`, and `invalid`. The simulator page uses `key_label` to show or hide the mapped letter without removing the letter from the API event.
+Color values are `off`, `idle`, `waiting`, `correct`, `incorrect`, `beat`, and `invalid`. The simulator page uses `key_label` to show or hide the mapped letter without removing the letter from the API event.
 
 ### `status`
 

@@ -19,8 +19,12 @@ import * as cr from "aws-cdk-lib/custom-resources"
 import { Construct } from "constructs"
 
 const allowedGroupName = "stella-poc-users"
+const platformAdminGroupName = "stella-platform-admins"
 const hostedZoneName = "stellaempowers.com"
 const siteDomainName = `demo.${hostedZoneName}`
+const membershipsByClinicIndex = "memberships-by-clinic"
+const patientsByClinicIndex = "patients-by-clinic"
+const sessionsByClinicIndex = "sessions-by-clinic"
 
 export class StellaportalStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -124,6 +128,13 @@ export class StellaportalStack extends cdk.Stack {
       userPoolId: userPool.userPoolId,
     })
 
+    new cognito.CfnUserPoolGroup(this, "StellaPlatformAdminsGroup", {
+      description: "Users allowed to create clinics and manage clinic members",
+      groupName: platformAdminGroupName,
+      precedence: 0,
+      userPoolId: userPool.userPoolId,
+    })
+
     const userPoolClient = new cognito.UserPoolClient(
       this,
       "StellaUserPoolClient",
@@ -159,6 +170,17 @@ export class StellaportalStack extends cdk.Stack {
       },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     })
+    patientsTable.addGlobalSecondaryIndex({
+      indexName: patientsByClinicIndex,
+      partitionKey: {
+        name: "clinicId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "clinicPatientKey",
+        type: dynamodb.AttributeType.STRING,
+      },
+    })
 
     const sessionsTable = new dynamodb.Table(this, "SessionsTable", {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -167,6 +189,17 @@ export class StellaportalStack extends cdk.Stack {
         type: dynamodb.AttributeType.STRING,
       },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      sortKey: {
+        name: "sessionKey",
+        type: dynamodb.AttributeType.STRING,
+      },
+    })
+    sessionsTable.addGlobalSecondaryIndex({
+      indexName: sessionsByClinicIndex,
+      partitionKey: {
+        name: "clinicId",
+        type: dynamodb.AttributeType.STRING,
+      },
       sortKey: {
         name: "sessionKey",
         type: dynamodb.AttributeType.STRING,
@@ -182,10 +215,52 @@ export class StellaportalStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     })
 
+    const clinicsTable = new dynamodb.Table(this, "ClinicsTable", {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      partitionKey: {
+        name: "clinicId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+
+    const membershipsTable = new dynamodb.Table(this, "MembershipsTable", {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      partitionKey: {
+        name: "userSub",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "clinicId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+    membershipsTable.addGlobalSecondaryIndex({
+      indexName: membershipsByClinicIndex,
+      partitionKey: {
+        name: "clinicId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "userSub",
+        type: dynamodb.AttributeType.STRING,
+      },
+    })
+
     const feedbackFunction = new lambda.Function(this, "FeedbackFunction", {
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
       environment: {
+        CLINICS_TABLE_NAME: clinicsTable.tableName,
         TABLE_NAME: feedbackTable.tableName,
+        MEMBERSHIPS_TABLE_NAME: membershipsTable.tableName,
+        PATIENTS_TABLE_NAME: patientsTable.tableName,
       },
       handler: "feedback-handler.handler",
       memorySize: 256,
@@ -194,12 +269,19 @@ export class StellaportalStack extends cdk.Stack {
     })
 
     feedbackTable.grantReadWriteData(feedbackFunction)
+    membershipsTable.grantReadData(feedbackFunction)
+    patientsTable.grantReadData(feedbackFunction)
+    clinicsTable.grant(feedbackFunction, "dynamodb:GetItem")
 
     const appFunction = new lambda.Function(this, "AppFunction", {
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
       environment: {
+        CLINICS_TABLE_NAME: clinicsTable.tableName,
+        MEMBERSHIPS_TABLE_NAME: membershipsTable.tableName,
         PATIENTS_TABLE_NAME: patientsTable.tableName,
+        PATIENTS_BY_CLINIC_INDEX: patientsByClinicIndex,
         SESSIONS_TABLE_NAME: sessionsTable.tableName,
+        SESSIONS_BY_CLINIC_INDEX: sessionsByClinicIndex,
       },
       handler: "app-handler.handler",
       memorySize: 256,
@@ -209,12 +291,16 @@ export class StellaportalStack extends cdk.Stack {
 
     patientsTable.grantReadWriteData(appFunction)
     sessionsTable.grantReadWriteData(appFunction)
+    membershipsTable.grantReadData(appFunction)
+    clinicsTable.grant(appFunction, "dynamodb:GetItem")
 
     const analysisFunction = new lambda.Function(this, "AnalysisFunction", {
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
       environment: {
         ANALYSIS_TABLE_NAME: analysisTable.tableName,
         BEDROCK_MODEL_ID: "us.amazon.nova-lite-v1:0",
+        CLINICS_TABLE_NAME: clinicsTable.tableName,
+        MEMBERSHIPS_TABLE_NAME: membershipsTable.tableName,
         PATIENTS_TABLE_NAME: patientsTable.tableName,
         SESSIONS_TABLE_NAME: sessionsTable.tableName,
       },
@@ -227,16 +313,46 @@ export class StellaportalStack extends cdk.Stack {
     patientsTable.grantReadData(analysisFunction)
     sessionsTable.grantReadData(analysisFunction)
     analysisTable.grantReadWriteData(analysisFunction)
+    membershipsTable.grantReadData(analysisFunction)
+    clinicsTable.grant(analysisFunction, "dynamodb:GetItem")
     analysisFunction.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+        actions: [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+        ],
         resources: ["*"],
       })
+    )
+
+    const clinicFunction = new lambda.Function(this, "ClinicFunction", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
+      environment: {
+        APP_ACCESS_GROUP_NAME: allowedGroupName,
+        CLINICS_TABLE_NAME: clinicsTable.tableName,
+        MEMBERSHIPS_BY_CLINIC_INDEX: membershipsByClinicIndex,
+        MEMBERSHIPS_TABLE_NAME: membershipsTable.tableName,
+        USER_POOL_ID: userPool.userPoolId,
+      },
+      handler: "clinic-handler.handler",
+      memorySize: 256,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      timeout: cdk.Duration.seconds(15),
+    })
+
+    clinicsTable.grantReadWriteData(clinicFunction)
+    membershipsTable.grantReadWriteData(clinicFunction)
+    userPool.grant(
+      clinicFunction,
+      "cognito-idp:AdminAddUserToGroup",
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminGetUser"
     )
 
     const seedFunction = new lambda.Function(this, "SeedFunction", {
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
       environment: {
+        CLINICS_TABLE_NAME: clinicsTable.tableName,
         PATIENTS_TABLE_NAME: patientsTable.tableName,
         SESSIONS_TABLE_NAME: sessionsTable.tableName,
       },
@@ -248,6 +364,7 @@ export class StellaportalStack extends cdk.Stack {
 
     patientsTable.grantReadWriteData(seedFunction)
     sessionsTable.grantReadWriteData(seedFunction)
+    clinicsTable.grantReadWriteData(seedFunction)
 
     const seedProvider = new cr.Provider(this, "SeedProvider", {
       onEventHandler: seedFunction,
@@ -256,18 +373,20 @@ export class StellaportalStack extends cdk.Stack {
     const seedResource = new cdk.CustomResource(this, "SeedResource", {
       properties: {
         overwriteEyePongSeedSessions: true,
-        seedVersion: "2026-10-10-eye-pong-integrity",
+        seedVersion: "2026-10-14-clinic-tenancy",
       },
       serviceToken: seedProvider.serviceToken,
     })
     seedResource.node.addDependency(patientsTable)
     seedResource.node.addDependency(sessionsTable)
+    seedResource.node.addDependency(clinicsTable)
 
     const appApi = new apigatewayv2.HttpApi(this, "StellaApi", {
       corsPreflight: {
-        allowHeaders: ["Authorization", "Content-Type"],
+        allowHeaders: ["Authorization", "Content-Type", "X-Stella-Clinic-Id"],
         allowMethods: [
           apigatewayv2.CorsHttpMethod.GET,
+          apigatewayv2.CorsHttpMethod.PATCH,
           apigatewayv2.CorsHttpMethod.POST,
         ],
         allowOrigins: ["*"],
@@ -282,6 +401,46 @@ export class StellaportalStack extends cdk.Stack {
         userPoolClients: [userPoolClient],
       }
     )
+
+    appApi.addRoutes({
+      authorizer: appAuthorizer,
+      integration: new integrations.HttpLambdaIntegration(
+        "ClinicIdentityIntegration",
+        clinicFunction
+      ),
+      methods: [apigatewayv2.HttpMethod.GET],
+      path: "/me",
+    })
+
+    appApi.addRoutes({
+      authorizer: appAuthorizer,
+      integration: new integrations.HttpLambdaIntegration(
+        "ClinicsIntegration",
+        clinicFunction
+      ),
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      path: "/admin/clinics",
+    })
+
+    appApi.addRoutes({
+      authorizer: appAuthorizer,
+      integration: new integrations.HttpLambdaIntegration(
+        "ClinicMembersIntegration",
+        clinicFunction
+      ),
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      path: "/admin/clinics/{clinicId}/members",
+    })
+
+    appApi.addRoutes({
+      authorizer: appAuthorizer,
+      integration: new integrations.HttpLambdaIntegration(
+        "ClinicMemberIntegration",
+        clinicFunction
+      ),
+      methods: [apigatewayv2.HttpMethod.PATCH],
+      path: "/admin/clinics/{clinicId}/members/{userSub}",
+    })
 
     appApi.addRoutes({
       authorizer: appAuthorizer,
@@ -346,6 +505,16 @@ export class StellaportalStack extends cdk.Stack {
     appApi.addRoutes({
       authorizer: appAuthorizer,
       integration: new integrations.HttpLambdaIntegration(
+        "SessionNotesIntegration",
+        appFunction
+      ),
+      methods: [apigatewayv2.HttpMethod.PATCH],
+      path: "/patients/{patientId}/sessions/{sessionId}",
+    })
+
+    appApi.addRoutes({
+      authorizer: appAuthorizer,
+      integration: new integrations.HttpLambdaIntegration(
         "SaveSessionIntegration",
         appFunction
       ),
@@ -381,6 +550,9 @@ export class StellaportalStack extends cdk.Stack {
             userPoolClientId: userPoolClient.userPoolClientId,
             userPoolId: userPool.userPoolId,
           },
+          exerciseRuntime: {
+            mode: "embedded",
+          },
         }),
       ],
     })
@@ -406,6 +578,18 @@ export class StellaportalStack extends cdk.Stack {
     })
     new cdk.CfnOutput(this, "AllowedUserGroup", {
       value: allowedGroupName,
+    })
+
+    new cdk.CfnOutput(this, "PlatformAdminGroup", {
+      value: platformAdminGroupName,
+    })
+
+    new cdk.CfnOutput(this, "ClinicsTableName", {
+      value: clinicsTable.tableName,
+    })
+
+    new cdk.CfnOutput(this, "MembershipsTableName", {
+      value: membershipsTable.tableName,
     })
 
     new cdk.CfnOutput(this, "PatientsTableName", {

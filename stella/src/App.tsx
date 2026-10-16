@@ -12,8 +12,8 @@ import { Popover } from "@base-ui/react/popover"
 import { format, parseISO } from "date-fns"
 import {
   ArrowLeft,
+  Building2,
   ChevronDown,
-  ChevronRight,
   ChevronsUpDown,
   LogOut,
   Play,
@@ -21,7 +21,13 @@ import {
   Search,
   UserRound,
 } from "lucide-react"
-import { Fragment, useEffect, useMemo, useState } from "react"
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import {
   Link,
   matchPath,
@@ -52,6 +58,7 @@ import {
 } from "@/api/stella"
 import { useAuth } from "@/components/auth/auth-context"
 import { LoginPage } from "@/components/auth/login-page"
+import { ClinicsPage } from "@/components/clinics/clinics-page"
 import { ExerciseControlPanel } from "@/components/exercise-control/exercise-control-panel"
 import { KeyboardRuntimePage } from "@/components/exercise-runtime/keyboard-runtime-page"
 import { DeviceRuntimePage } from "@/components/exercise-runtime/device-runtime-page"
@@ -61,6 +68,7 @@ import {
   PatientTabs,
   type PatientDetailTab,
 } from "@/components/patients/patient-tabs"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { Button } from "@/components/ui/button"
 import {
   getDefaultExerciseSetup,
@@ -74,7 +82,14 @@ import {
   usePatient,
   usePatientSessions,
   usePatients,
+  useUpdateSessionNotes,
 } from "@/hooks/use-stella"
+import { useStellaIdentity } from "@/hooks/use-clinics"
+import {
+  getSelectedClinicId,
+  setSelectedClinicId,
+  subscribeToSelectedClinic,
+} from "@/lib/clinic-session"
 import { saveRerunExerciseSetup } from "@/lib/exercise-runtime/session-storage"
 import { cn } from "@/lib/utils"
 import { getRuntimeConfig } from "@/lib/runtime-config"
@@ -86,11 +101,16 @@ import type {
   PatientWithStats,
   SessionFilterDefinition,
 } from "@/types"
+import type { StellaIdentity } from "@/types/clinic"
 
 const patientSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),
-  notes: z.string().optional(),
+  patientCode: z
+    .string()
+    .trim()
+    .max(64, "Patient ID must be 64 characters or fewer")
+    .optional(),
 })
 
 function formatDate(date: string | undefined, pattern = "MMM d, yyyy") {
@@ -444,7 +464,7 @@ function AddPatientDialog({
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    notes: "",
+    patientCode: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -474,7 +494,7 @@ function AddPatientDialog({
     }
 
     const patient = await createPatient.mutateAsync(parsed.data)
-    setForm({ firstName: "", lastName: "", notes: "" })
+    setForm({ firstName: "", lastName: "", patientCode: "" })
     setErrors({})
     onCreated(`${patient.firstName} ${patient.lastName} was added.`)
     onOpenChange(false)
@@ -489,8 +509,7 @@ function AddPatientDialog({
         <div>
           <h2 className="text-xl font-semibold">Add Patient</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a POC patient record. Patient ID will be assigned
-            automatically.
+            Leave Patient ID blank to assign one automatically.
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -523,12 +542,20 @@ function AddPatientDialog({
             ) : null}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Notes
-            <textarea
-              className="min-h-24 rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              onChange={(event) => updateField("notes", event.target.value)}
-              value={form.notes}
+            Patient ID <span className="text-muted-foreground">(optional)</span>
+            <input
+              aria-invalid={Boolean(errors.patientCode)}
+              className="h-9 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              onChange={(event) =>
+                updateField("patientCode", event.target.value)
+              }
+              value={form.patientCode}
             />
+            {errors.patientCode ? (
+              <span className="text-xs text-destructive">
+                {errors.patientCode}
+              </span>
+            ) : null}
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">
@@ -548,12 +575,17 @@ function AddPatientDialog({
   )
 }
 
-function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
+function PatientListPage({
+  isPlatformAdmin,
+  onToast,
+}: {
+  isPlatformAdmin: boolean
+  onToast: (message: string) => void
+}) {
   const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [globalFilter, setGlobalFilter] = useState("")
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "isActive", desc: true },
     { id: "lastSessionDate", desc: true },
   ])
   const patientsQuery = usePatients()
@@ -589,32 +621,11 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
         ),
       },
       {
-        accessorKey: "exerciseCount",
-        header: ({ column }) => (
-          <SortHeader column={column} label="Exercises" />
-        ),
-        cell: ({ getValue }) => (
-          <span className="tabular-nums">{getValue<number>()}</span>
-        ),
-      },
-      {
         accessorKey: "lastSessionDate",
         header: ({ column }) => (
           <SortHeader column={column} label="Last Session" />
         ),
         cell: ({ getValue }) => formatDate(getValue<string | undefined>()),
-      },
-      {
-        accessorKey: "isActive",
-        header: ({ column }) => <SortHeader column={column} label="Status" />,
-        cell: ({ getValue }) => (
-          <StatusBadge status={getValue<boolean>() ? "Active" : "Inactive"} />
-        ),
-      },
-      {
-        id: "navigate",
-        header: "",
-        cell: () => <ChevronRight className="text-muted-foreground" />,
       },
     ],
     []
@@ -642,6 +653,17 @@ function PatientListPage({ onToast }: { onToast: (message: string) => void }) {
             <Plus data-icon="inline-start" />
             Add Patient
           </Button>
+        }
+        backAction={
+          isPlatformAdmin ? (
+            <Link
+              className={buttonVariants({ variant: "ghost" })}
+              to="/admin/clinics"
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Back to admin
+            </Link>
+          ) : null
         }
         description="Review Stella patient activity and exercise performance."
         title="Patients"
@@ -748,41 +770,6 @@ function PatientSummaryPage() {
         ),
         cell: ({ getValue }) => formatDate(getValue<string>(), "MMM d"),
       },
-      {
-        accessorKey: "primaryMetric",
-        header: "Performance",
-        cell: ({ row, getValue }) => {
-          const definition = exerciseDefinitions[row.original.activity]
-          return (
-            <div>
-              <div className="font-medium">{getValue<string>()}</div>
-              <div className="text-xs text-muted-foreground">
-                {definition.patientSummary[0].label}
-              </div>
-            </div>
-          )
-        },
-      },
-      {
-        accessorKey: "secondaryMetric",
-        header: "Response / Secondary",
-        cell: ({ row, getValue }) => {
-          const definition = exerciseDefinitions[row.original.activity]
-          return (
-            <div>
-              <div className="font-medium">{getValue<string>()}</div>
-              <div className="text-xs text-muted-foreground">
-                {definition.patientSummary[1].label}
-              </div>
-            </div>
-          )
-        },
-      },
-      {
-        id: "navigate",
-        header: "",
-        cell: () => <ChevronRight className="text-muted-foreground" />,
-      },
     ],
     []
   )
@@ -798,7 +785,7 @@ function PatientSummaryPage() {
   })
 
   if (!patientQuery.isLoading && !patientQuery.data) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to="/patients" />
   }
 
   const patient = patientQuery.data
@@ -838,7 +825,11 @@ function PatientSummaryPage() {
           ) : null
         }
         backAction={
-          <Button onClick={() => navigate("/")} type="button" variant="ghost">
+          <Button
+            onClick={() => navigate("/patients")}
+            type="button"
+            variant="ghost"
+          >
             <ArrowLeft data-icon="inline-start" />
             Back to patients
           </Button>
@@ -866,7 +857,7 @@ function PatientSummaryPage() {
 
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Exercise Performance</h2>
+              <h2 className="text-xl font-semibold">Exercises</h2>
             </div>
             <DataTable
               emptyMessage={
@@ -898,11 +889,11 @@ function ExerciseSetupPage({
   const patientQuery = usePatient(patientId)
 
   if (!patientQuery.isLoading && !patientQuery.data) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to="/patients" />
   }
 
   if (!patientId) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to="/patients" />
   }
 
   const patientName = patientQuery.data
@@ -1149,20 +1140,80 @@ function ConfigurationFilters({
   )
 }
 
+function SessionNotes({ session }: { session: ExerciseSession }) {
+  const updateNotes = useUpdateSessionNotes()
+  const [notes, setNotes] = useState(session.sessionNotes ?? "")
+  const [saved, setSaved] = useState(false)
+
+  async function saveNotes() {
+    setSaved(false)
+    try {
+      await updateNotes.mutateAsync({
+        patientId: session.patientId,
+        sessionId: session.sessionId,
+        sessionNotes: notes,
+      })
+      setSaved(true)
+    } catch {
+      // The mutation exposes its error inline below the notes field.
+    }
+  }
+
+  return (
+    <div className="rounded-md border bg-background p-4">
+      <div className="font-medium">Session notes</div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Document observations from this Eye Pong session.
+      </p>
+      <textarea
+        className="mt-3 min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        maxLength={2000}
+        onChange={(event) => {
+          setNotes(event.target.value)
+          setSaved(false)
+        }}
+        placeholder="Add session notes..."
+        value={notes}
+      />
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          {updateNotes.error
+            ? updateNotes.error.message
+            : saved
+              ? "Notes saved."
+              : `${notes.length}/2,000`}
+        </div>
+        <Button
+          disabled={updateNotes.isPending}
+          onClick={() => void saveNotes()}
+          size="sm"
+          type="button"
+        >
+          {updateNotes.isPending ? "Saving..." : "Save notes"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function SessionDetails({ session }: { session: ExerciseSession }) {
   const configRows: Array<[string, unknown]> = []
   const resultRows: Array<[string, unknown, string?]> = []
+  const isEyePong = session.activity === "eye-pong"
 
-  if (session.keyboardLayout) {
+  if (!isEyePong && session.keyboardLayout) {
     configRows.push([
       "Keyboard Layout",
       session.keyboardLayout === "alphabetical" ? "Alphabetical" : "QWERTY",
     ])
   }
-  if (session.keyboardSide) {
+  if (
+    session.keyboardSide &&
+    (!isEyePong || ("mode" in session && session.mode === "random"))
+  ) {
     configRows.push(["Keyboard Side", displayText(session.keyboardSide)])
   }
-  if (session.keyLabels) {
+  if (!isEyePong && session.keyLabels) {
     configRows.push([
       "Key Labels",
       session.keyLabels === "blank" ? "Blank" : "Show letters",
@@ -1199,7 +1250,7 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
   if ("targetCount" in session && session.targetCount) {
     configRows.push(["Target Changes", session.targetCount])
   }
-  if ("pattern" in session) {
+  if (!isEyePong && "pattern" in session) {
     configRows.push(["Pattern", displayText(session.pattern)])
   }
   if ("intervalMs" in session && session.intervalMs) {
@@ -1377,7 +1428,7 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={cn("grid gap-4", !isEyePong && "md:grid-cols-2")}>
         <div className="overflow-hidden rounded-md border bg-background">
           <table className="w-full border-collapse text-sm">
             <thead className="bg-muted/60">
@@ -1399,30 +1450,33 @@ function SessionDetails({ session }: { session: ExerciseSession }) {
             </tbody>
           </table>
         </div>
-        <div className="overflow-hidden rounded-md border bg-background">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-muted/60">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
-                  Additional Results
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultRows.map(([label, value, valueFormat]) => (
-                <tr className="border-t" key={label}>
-                  <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
-                    {label}
+        {!isEyePong ? (
+          <div className="overflow-hidden rounded-md border bg-background">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-muted/60">
+                <tr>
+                  <th className="px-3 py-2.5 text-left font-medium" colSpan={2}>
+                    Additional Results
                   </th>
-                  <td className="px-3 py-2.5 font-medium">
-                    {formatMetricValue(value, valueFormat)}
-                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {resultRows.map(([label, value, valueFormat]) => (
+                  <tr className="border-t" key={label}>
+                    <th className="w-1/2 border-r px-3 py-2.5 text-left font-normal text-muted-foreground">
+                      {label}
+                    </th>
+                    <td className="px-3 py-2.5 font-medium">
+                      {formatMetricValue(value, valueFormat)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
+      {isEyePong ? <SessionNotes session={session} /> : null}
       {byKey?.length ? (
         <div className="overflow-x-auto rounded-md border bg-background">
           <table className="w-full border-collapse text-sm">
@@ -1595,7 +1649,7 @@ function ExerciseDetailsPage() {
     !definition ||
     (!patientQuery.isLoading && !patientQuery.data)
   ) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to="/patients" />
   }
 
   function toggleFilter(filterKey: string, value: string) {
@@ -1687,40 +1741,49 @@ function ExerciseDetailsPage() {
         totalCount={sessions.length}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {definition.summaryCards.map((metric) => (
-          <MetricCard
-            key={metric.key}
-            label={metric.label}
-            value={formatMetricValue(
-              getExerciseAggregateValue(filteredSessions, metric.key),
-              metric.format
-            )}
-          />
-        ))}
-      </div>
-
-      <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Performance Over Time</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Session-level measured performance for the selected configurations.
-          </p>
-        </div>
-        {filteredSessions.length > 0 ? (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {definition.charts.slice(0, 2).map((metric) => (
-              <ChartPanel data={chartData} key={metric.key} metric={metric} />
+      {typedExercise !== "eye-pong" ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {definition.summaryCards.map((metric) => (
+              <MetricCard
+                key={metric.key}
+                label={metric.label}
+                value={formatMetricValue(
+                  getExerciseAggregateValue(filteredSessions, metric.key),
+                  metric.format
+                )}
+              />
             ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed bg-card px-4 py-8 text-sm text-muted-foreground">
-            {sessionsQuery.isLoading
-              ? "Loading sessions..."
-              : emptyFilterMessage}
-          </div>
-        )}
-      </section>
+
+          <section className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Performance Over Time</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Session-level measured performance for the selected
+                configurations.
+              </p>
+            </div>
+            {filteredSessions.length > 0 ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {definition.charts.slice(0, 2).map((metric) => (
+                  <ChartPanel
+                    data={chartData}
+                    key={metric.key}
+                    metric={metric}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed bg-card px-4 py-8 text-sm text-muted-foreground">
+                {sessionsQuery.isLoading
+                  ? "Loading sessions..."
+                  : emptyFilterMessage}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
 
       <section className="flex flex-col gap-4">
         <div>
@@ -1756,7 +1819,7 @@ function ExerciseDetailsPage() {
                     </th>
                   ))}
                   <th className="h-11 px-4 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    Details
+                    {typedExercise === "eye-pong" ? "Notes" : "Details"}
                   </th>
                 </tr>
               </thead>
@@ -1815,7 +1878,13 @@ function ExerciseDetailsPage() {
                               type="button"
                               variant="ghost"
                             >
-                              {isExpanded ? "Hide" : "View"}
+                              {typedExercise === "eye-pong"
+                                ? isExpanded
+                                  ? "Close"
+                                  : "View"
+                                : isExpanded
+                                  ? "Hide"
+                                  : "View"}
                             </Button>
                           </td>
                         </tr>
@@ -1825,7 +1894,11 @@ function ExerciseDetailsPage() {
                               className="p-4"
                               colSpan={definition.tableColumns.length + 2}
                             >
-                              <SessionDetails session={session} />
+                              {typedExercise === "eye-pong" ? (
+                                <SessionNotes session={session} />
+                              ) : (
+                                <SessionDetails session={session} />
+                              )}
                             </td>
                           </tr>
                         ) : null}
@@ -1890,7 +1963,7 @@ function HeaderBreadcrumbs() {
       className="min-w-0 flex-1 overflow-x-auto border-l border-[#2a4568] pl-4 text-base whitespace-nowrap text-[#c6a632]"
     >
       <div className="flex items-center gap-2">
-        <Link className="hover:text-[#f6f2ea]" to="/">
+        <Link className="hover:text-[#f6f2ea]" to="/patients">
           Patients
         </Link>
         <span>/</span>
@@ -1915,14 +1988,23 @@ function HeaderBreadcrumbs() {
 
 function AppShell({
   children,
+  identity,
   onToast,
+  selectedClinicId,
   toast,
 }: {
   children: React.ReactNode
+  identity?: StellaIdentity
   onToast: (message: string) => void
+  selectedClinicId?: string
   toast: string
 }) {
   const { isAuthEnabled, mode, signOut, user } = useAuth()
+  const location = useLocation()
+  const isAdminRoute = location.pathname.startsWith("/admin/")
+  const selectedClinic = identity?.memberships.find(
+    (membership) => membership.clinicId === selectedClinicId
+  )
 
   return (
     <div className="min-h-svh bg-background text-foreground">
@@ -1938,6 +2020,12 @@ function AppShell({
           </Link>
           <HeaderBreadcrumbs />
           <div className="ml-auto flex items-center gap-3 text-base">
+            {!isAdminRoute && selectedClinic ? (
+              <div className="flex max-w-64 items-center gap-2 text-sm text-[#f6f2ea]">
+                <Building2 className="size-4 shrink-0 text-[#c6a632]" />
+                <span className="truncate">{selectedClinic.clinicName}</span>
+              </div>
+            ) : null}
             {isAuthEnabled ? (
               <FeedbackWidget
                 onToast={onToast}
@@ -1966,6 +2054,18 @@ function AppShell({
                         ? "Local preview"
                         : (user?.email ?? user?.displayName ?? "Signed in")}
                     </div>
+                    {identity?.platformAdmin ? (
+                      <Link
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "mt-3 w-full justify-start"
+                        )}
+                        to="/admin/clinics"
+                      >
+                        <Building2 data-icon="inline-start" />
+                        Manage clinics
+                      </Link>
+                    ) : null}
                     {isAuthEnabled ? (
                       <Button
                         className="mt-3 w-full justify-start"
@@ -1997,7 +2097,24 @@ function AppShell({
 export function App() {
   const { isAuthEnabled, signOut, status, user } = useAuth()
   const [toast, setToast] = useState("")
+  const storedClinicId = useSyncExternalStore(
+    subscribeToSelectedClinic,
+    getSelectedClinicId,
+    getSelectedClinicId
+  )
   const exerciseRuntimeMode = getRuntimeConfig().exerciseRuntime.mode
+  const identityQuery = useStellaIdentity(status === "authenticated")
+  const memberships = identityQuery.data?.memberships ?? []
+  const selectedClinicId = memberships.some(
+    (membership) => membership.clinicId === storedClinicId
+  )
+    ? storedClinicId
+    : (memberships[0]?.clinicId ?? "")
+
+  useEffect(() => {
+    if (!identityQuery.data) return
+    setSelectedClinicId(selectedClinicId)
+  }, [identityQuery.data, selectedClinicId])
 
   function showToast(message: string) {
     setToast(message)
@@ -2042,10 +2159,104 @@ export function App() {
     )
   }
 
+  if (status === "authenticated" && identityQuery.isLoading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background px-6 text-foreground">
+        <p className="text-sm text-muted-foreground">
+          Loading clinic access...
+        </p>
+      </div>
+    )
+  }
+
+  if (status === "authenticated" && identityQuery.error) {
+    return (
+      <AppShell onToast={showToast} toast={toast}>
+        <main className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-xl items-center px-8">
+          <div className="rounded-xl border bg-card p-8">
+            <h1 className="text-2xl font-semibold">
+              Clinic access unavailable
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {identityQuery.error.message}
+            </p>
+          </div>
+        </main>
+      </AppShell>
+    )
+  }
+
+  if (
+    status === "authenticated" &&
+    identityQuery.data &&
+    selectedClinicId !== storedClinicId
+  ) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background px-6 text-foreground">
+        <p className="text-sm text-muted-foreground">Selecting clinic...</p>
+      </div>
+    )
+  }
+
+  const identity = identityQuery.data
+  const hasClinic = Boolean(selectedClinicId)
+
+  if (status === "authenticated" && !hasClinic && !identity?.platformAdmin) {
+    return (
+      <AppShell identity={identity} onToast={showToast} toast={toast}>
+        <main className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-xl items-center px-8">
+          <div className="rounded-xl border bg-card p-8">
+            <h1 className="text-2xl font-semibold">No clinic assigned</h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Ask a Stella administrator to assign this account to a clinic.
+            </p>
+          </div>
+        </main>
+      </AppShell>
+    )
+  }
+
   return (
-    <AppShell onToast={showToast} toast={toast}>
+    <AppShell
+      identity={identity}
+      onToast={showToast}
+      selectedClinicId={selectedClinicId}
+      toast={toast}
+    >
       <Routes>
-        <Route element={<PatientListPage onToast={showToast} />} path="/" />
+        <Route
+          element={
+            identity?.platformAdmin ? (
+              <Navigate replace to="/admin/clinics" />
+            ) : hasClinic ? (
+              <Navigate replace to="/patients" />
+            ) : null
+          }
+          path="/"
+        />
+        <Route
+          element={
+            hasClinic ? (
+              <PatientListPage
+                isPlatformAdmin={Boolean(identity?.platformAdmin)}
+                onToast={showToast}
+              />
+            ) : (
+              <Navigate replace to="/admin/clinics" />
+            )
+          }
+          path="/patients"
+        />
+        <Route
+          element={
+            identity?.platformAdmin ? (
+              <ClinicsPage onToast={showToast} />
+            ) : (
+              <Navigate replace to="/" />
+            )
+          }
+          path="/admin/clinics"
+        />
         <Route element={<PatientSummaryPage />} path="/patients/:patientId" />
         <Route
           element={<ExerciseSetupPage onToast={showToast} />}

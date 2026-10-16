@@ -1,6 +1,10 @@
 "use strict";
 
-const { PutItemCommand, DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  PutItemCommand,
+  UpdateItemCommand,
+  DynamoDBClient,
+} = require("@aws-sdk/client-dynamodb");
 const { marshall } = require("@aws-sdk/util-dynamodb");
 
 const { seedPatients, seedSessions } = require("./seed-data");
@@ -9,6 +13,8 @@ const dynamo = new DynamoDBClient({});
 
 const patientsTableName = process.env.PATIENTS_TABLE_NAME;
 const sessionsTableName = process.env.SESSIONS_TABLE_NAME;
+const clinicsTableName = process.env.CLINICS_TABLE_NAME;
+const demoClinicId = "clinic-stella-demo";
 
 async function putIfMissing(tableName, item, keyCondition) {
   try {
@@ -52,6 +58,18 @@ exports.handler = async (event) => {
     event.ResourceProperties?.overwriteEyePongSeedSessions === "true" ||
     event.ResourceProperties?.overwriteEyePongSeedSessions === true;
 
+  await putIfMissing(
+    clinicsTableName,
+    {
+      clinicId: demoClinicId,
+      name: "Stella Demo Clinic",
+      status: "active",
+      createdAt: "2026-09-15T12:00:00.000Z",
+      createdBy: "system-seed",
+    },
+    "attribute_not_exists(clinicId)"
+  );
+
   for (const patient of seedPatients) {
     await putIfMissing(
       patientsTableName,
@@ -60,6 +78,18 @@ exports.handler = async (event) => {
         ...patient,
       },
       "attribute_not_exists(patientId)"
+    );
+    await dynamo.send(
+      new UpdateItemCommand({
+        TableName: patientsTableName,
+        Key: marshall({ patientId: patient.id }),
+        UpdateExpression:
+          "SET clinicId = if_not_exists(clinicId, :clinicId), clinicPatientKey = if_not_exists(clinicPatientKey, :clinicPatientKey)",
+        ExpressionAttributeValues: marshall({
+          ":clinicId": demoClinicId,
+          ":clinicPatientKey": `${patient.createdAt}#${patient.id}`,
+        }),
+      })
     );
   }
 
@@ -71,7 +101,7 @@ exports.handler = async (event) => {
     };
 
     if (overwriteEyePongSeedSessions && session.activity === "eye-pong") {
-      await putSeedSession(item);
+      await putSeedSession({ ...item, clinicId: demoClinicId });
     } else {
       await putIfMissing(
         sessionsTableName,
@@ -79,6 +109,17 @@ exports.handler = async (event) => {
         "attribute_not_exists(patientId) AND attribute_not_exists(sessionKey)"
       );
     }
+    await dynamo.send(
+      new UpdateItemCommand({
+        TableName: sessionsTableName,
+        Key: marshall({
+          patientId: item.patientId,
+          sessionKey: item.sessionKey,
+        }),
+        UpdateExpression: "SET clinicId = if_not_exists(clinicId, :clinicId)",
+        ExpressionAttributeValues: marshall({ ":clinicId": demoClinicId }),
+      })
+    );
   }
 
   return {

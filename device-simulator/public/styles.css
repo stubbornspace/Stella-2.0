@@ -230,13 +230,6 @@ h2 {
   color: white;
 }
 
-.key[data-color="wait_cue"] {
-  border-color: #c49224;
-  background: #f2c955;
-  box-shadow: 0 4px 0 #9a711b;
-  color: #44300a;
-}
-
 .key[data-color="invalid"] {
   background: #aaa79f;
   box-shadow: 0 4px 0 #7b7972;

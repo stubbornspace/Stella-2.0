@@ -7,21 +7,42 @@ const exerciseTypes = [
   "letter-find",
   "eye-pong",
   "inhibition-challenge",
-  "motor-sequence-builder",
 ];
 
 const EYE_PONG_TARGET_COUNT = 20;
 const EYE_PONG_DEFAULT_VISUAL_BPM = 54;
 const STOMP_DOWNBEAT_BPM = 83.35;
 const KEY_TO_LETTER = {
-  1: "Q", 2: "W", 3: "E", 4: "R", 5: "T", 6: "Y", 7: "U", 8: "I",
-  9: "O", 10: "P", 11: "A", 12: "S", 13: "D", 14: "F", 15: "G",
-  16: "H", 17: "J", 18: "K", 19: "L", 22: "Z", 23: "X", 24: "C",
-  25: "V", 26: "B", 27: "N", 28: "M",
+  1: "Q",
+  2: "W",
+  3: "E",
+  4: "R",
+  5: "T",
+  6: "Y",
+  7: "U",
+  8: "I",
+  9: "O",
+  10: "P",
+  11: "A",
+  12: "S",
+  13: "D",
+  14: "F",
+  15: "G",
+  16: "H",
+  17: "J",
+  18: "K",
+  19: "L",
+  22: "Z",
+  23: "X",
+  24: "C",
+  25: "V",
+  26: "B",
+  27: "N",
+  28: "M",
 };
 const LETTER_KEYS = Object.keys(KEY_TO_LETTER).map(Number);
 const LETTER_TO_KEY = Object.fromEntries(
-  Object.entries(KEY_TO_LETTER).map(([key, letter]) => [letter, Number(key)])
+  Object.entries(KEY_TO_LETTER).map(([key, letter]) => [letter, Number(key)]),
 );
 
 const seedPatients = [
@@ -140,7 +161,7 @@ const patientPlans = [
     patientId: "p-1021",
     startOffset: 84,
     activities: exerciseTypes,
-    counts: [9, 7, 4, 7, 5],
+    counts: [9, 7, 4, 7],
   },
   {
     patientId: "p-1022",
@@ -151,8 +172,8 @@ const patientPlans = [
   {
     patientId: "p-1023",
     startOffset: 88,
-    activities: ["letter-find", "motor-sequence-builder"],
-    counts: [6, 5],
+    activities: ["letter-find"],
+    counts: [6],
   },
   {
     patientId: "p-1024",
@@ -164,7 +185,7 @@ const patientPlans = [
     patientId: "p-1025",
     startOffset: 62,
     activities: exerciseTypes,
-    counts: [5, 5, 4, 4, 3],
+    counts: [5, 5, 4, 4],
   },
   {
     patientId: "p-1026",
@@ -175,18 +196,14 @@ const patientPlans = [
   {
     patientId: "p-1027",
     startOffset: 50,
-    activities: [
-      "letter-target",
-      "inhibition-challenge",
-      "motor-sequence-builder",
-    ],
-    counts: [6, 5, 4],
+    activities: ["letter-target", "inhibition-challenge"],
+    counts: [6, 5],
   },
   {
     patientId: "p-1028",
     startOffset: 45,
-    activities: ["letter-find", "eye-pong", "motor-sequence-builder"],
-    counts: [5, 4, 3],
+    activities: ["letter-find", "eye-pong"],
+    counts: [5, 4],
   },
   {
     patientId: "p-1029",
@@ -203,8 +220,8 @@ const patientPlans = [
   {
     patientId: "p-1031",
     startOffset: 33,
-    activities: ["letter-target", "letter-find", "motor-sequence-builder"],
-    counts: [8, 6, 5],
+    activities: ["letter-target", "letter-find"],
+    counts: [8, 6],
   },
   {
     patientId: "p-1032",
@@ -221,26 +238,21 @@ const patientPlans = [
   {
     patientId: "p-1034",
     startOffset: 22,
-    activities: [
-      "letter-target",
-      "eye-pong",
-      "inhibition-challenge",
-      "motor-sequence-builder",
-    ],
-    counts: [5, 4, 4, 3],
+    activities: ["letter-target", "eye-pong", "inhibition-challenge"],
+    counts: [5, 4, 4],
   },
   {
     patientId: "p-1035",
     startOffset: 18,
-    activities: ["letter-find", "eye-pong", "motor-sequence-builder"],
-    counts: [5, 4, 4],
+    activities: ["letter-find", "eye-pong"],
+    counts: [5, 4],
   },
 ];
 
 function dateFor(startOffset, sessionIndex, activityIndex) {
   const date = new Date(demoToday);
   date.setDate(
-    demoToday.getDate() - startOffset + sessionIndex * 7 + activityIndex * 2
+    demoToday.getDate() - startOffset + sessionIndex * 7 + activityIndex * 2,
   );
   return date.toISOString();
 }
@@ -273,7 +285,7 @@ function metricPoint(seed, sessionIndex, patientId, sessionCount) {
       missedGo: clamp(
         Math.round(12 - progress * 8 + (wiggle > 0 ? 0 : 1)),
         2,
-        15
+        15,
       ),
       sequence: clamp(74 + base + progress * 16 + wiggle, 65, 96),
       sequenceFirst: clamp(68 + base + progress * 18 + wiggle, 60, 93),
@@ -288,17 +300,17 @@ function metricPoint(seed, sessionIndex, patientId, sessionCount) {
     firstAttempt: clamp(
       68 + base + wave + (sessionIndex % 2 === 0 ? 2 : -1),
       62,
-      94
+      94,
     ),
     latency: clamp(
       1110 - wave * 18 - base * 9 + (sessionIndex % 3) * 34,
       720,
-      1180
+      1180,
     ),
     errors: clamp(
       4 - Math.floor(wave / 5) + (sessionIndex % 3 === 0 ? 1 : 0),
       0,
-      5
+      5,
     ),
     completion: clamp(78 + base + wave, 70, 100),
     changes: 34 + base + sessionIndex * 2 + (sessionIndex % 3) * 3,
@@ -310,7 +322,7 @@ function metricPoint(seed, sessionIndex, patientId, sessionCount) {
     time: clamp(
       6200 - wave * 120 - base * 80 + (sessionIndex % 4) * 180,
       3200,
-      7000
+      7000,
     ),
   };
 }
@@ -321,7 +333,13 @@ function sessionStatus(sessionIndex, patientId) {
     : "completed";
 }
 
-function baseSession(patientId, activity, sessionIndex, activityIndex, startOffset) {
+function baseSession(
+  patientId,
+  activity,
+  sessionIndex,
+  activityIndex,
+  startOffset,
+) {
   return {
     sessionId: `${patientId}-${activity}-${sessionIndex + 1}`,
     patientId,
@@ -332,11 +350,11 @@ function baseSession(patientId, activity, sessionIndex, activityIndex, startOffs
       "Session-level Stella reporting values captured from keyboard exercise activity.",
     activeEngagementTimeMinutes: round(
       12 + sessionIndex * 0.8 + activityIndex * 0.6,
-      1
+      1,
     ),
     totalSessionDurationMinutes: round(
       15 + sessionIndex * 0.9 + activityIndex * 0.8,
-      1
+      1,
     ),
     attemptsPerMinute: round(7 + sessionIndex * 0.3 + activityIndex * 0.2, 1),
     pauseBreakCount: sessionIndex % 4 === 0 ? 1 : 0,
@@ -350,7 +368,7 @@ function makeLetterTarget(
   sessionCount,
   activityIndex,
   startOffset,
-  seed
+  seed,
 ) {
   const point = metricPoint(seed, sessionIndex, patientId, sessionCount);
   const contentMode = sessionIndex % 3 === 0 ? "letters" : "words";
@@ -370,7 +388,7 @@ function makeLetterTarget(
       "letter-target",
       sessionIndex,
       activityIndex,
-      startOffset
+      startOffset,
     ),
     contentMode,
     itemsPerSession: itemsTotal,
@@ -409,7 +427,7 @@ function makeLetterFind(
   sessionCount,
   activityIndex,
   startOffset,
-  seed
+  seed,
 ) {
   const point = metricPoint(seed + 2, sessionIndex, patientId, sessionCount);
   const contentMode = sessionIndex % 2 === 0 ? "letters" : "words";
@@ -429,7 +447,7 @@ function makeLetterFind(
       "letter-find",
       sessionIndex,
       activityIndex,
-      startOffset
+      startOffset,
     ),
     contentMode,
     itemsPerSession: itemsTotal,
@@ -453,7 +471,9 @@ function makeLetterFind(
     tempoBpm:
       audioMode === "metronome" ? 46 + (sessionIndex % 5) * 10 : undefined,
     musicPlaybackRate:
-      audioMode === "music" ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4] : undefined,
+      audioMode === "music"
+        ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4]
+        : undefined,
   };
 }
 
@@ -462,14 +482,14 @@ function makeEyePong(
   sessionIndex,
   activityIndex,
   startOffset,
-  seed
+  seed,
 ) {
   const base = baseSession(
     patientId,
     "eye-pong",
     sessionIndex,
     activityIndex,
-    startOffset
+    startOffset,
   );
   const audioMode =
     sessionIndex % 3 === 0
@@ -478,12 +498,14 @@ function makeEyePong(
         ? "music"
         : "metronome";
   const mode = sessionIndex % 2 === 0 ? "left-right" : "random";
+  const keyboardSide =
+    mode === "left-right"
+      ? "full"
+      : ["left", "right", "full"][sessionIndex % 3];
   const tempoBpm =
     audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined;
   const musicPlaybackRate =
-    audioMode === "music"
-      ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4]
-      : undefined;
+    audioMode === "music" ? [0.7, 0.9, 1.1, 1.3][sessionIndex % 4] : undefined;
   const actualBpm =
     audioMode === "music"
       ? STOMP_DOWNBEAT_BPM * (musicPlaybackRate ?? 1)
@@ -508,7 +530,8 @@ function makeEyePong(
             (seed + sessionIndex * 3 + cueIndex * 7) % LETTER_KEYS.length
           ];
     const scheduledOffsetMs = firstCueOffsetMs + cueIndex * intervalMs;
-    const presentationDelayMs = delays[(cueIndex + sessionIndex) % delays.length];
+    const presentationDelayMs =
+      delays[(cueIndex + sessionIndex) % delays.length];
 
     return {
       sequence: cueIndex + 1,
@@ -521,22 +544,23 @@ function makeEyePong(
   });
   const targetHoldMs = Math.min(
     600,
-    Math.max(180, Math.round(intervalMs * 0.7))
+    Math.max(180, Math.round(intervalMs * 0.7)),
   );
   const elapsedSeconds = Math.max(
     1,
     Math.ceil(
-      ((cueEvents.at(-1)?.presentedOffsetMs ?? 0) + targetHoldMs) / 1000
-    )
+      ((cueEvents.at(-1)?.presentedOffsetMs ?? 0) + targetHoldMs) / 1000,
+    ),
   );
   const durationMinutes = round(elapsedSeconds / 60, 2);
   const completionRatePercent = Math.min(
     100,
-    Math.round((targetChanges / EYE_PONG_TARGET_COUNT) * 100)
+    Math.round((targetChanges / EYE_PONG_TARGET_COUNT) * 100),
   );
 
   return {
     ...base,
+    keyboardSide,
     mode,
     pattern: mode === "left-right" ? "horizontal" : "mixed",
     targetCount: EYE_PONG_TARGET_COUNT,
@@ -558,6 +582,7 @@ function makeEyePong(
       completionRatePercent,
       cueEvents,
       elapsedSeconds,
+      keyboardSide,
       mode,
       targetCount: EYE_PONG_TARGET_COUNT,
       targetChanges,
@@ -571,7 +596,7 @@ function makeInhibitionChallenge(
   sessionCount,
   activityIndex,
   startOffset,
-  seed
+  seed,
 ) {
   const point = metricPoint(seed + 5, sessionIndex, patientId, sessionCount);
   const presets = ["balanced", "go-heavy", "stop-heavy"];
@@ -582,7 +607,7 @@ function makeInhibitionChallenge(
       "inhibition-challenge",
       sessionIndex,
       activityIndex,
-      startOffset
+      startOffset,
     ),
     trialCount: 12 + (sessionIndex % 3) * 4,
     rulePreset: presets[sessionIndex % presets.length],
@@ -601,7 +626,7 @@ function makeMotorSequenceBuilder(
   sessionCount,
   activityIndex,
   startOffset,
-  seed
+  seed,
 ) {
   const point = metricPoint(seed + 7, sessionIndex, patientId, sessionCount);
   const types = ["letter-sequence", "word-sequence"];
@@ -614,7 +639,7 @@ function makeMotorSequenceBuilder(
       "motor-sequence-builder",
       sessionIndex,
       activityIndex,
-      startOffset
+      startOffset,
     ),
     contentType: types[sessionIndex % types.length],
     sequenceLength,
@@ -634,7 +659,7 @@ function makeSession(
   sessionIndex,
   sessionCount,
   activityIndex,
-  startOffset
+  startOffset,
 ) {
   const seed = patientId.charCodeAt(patientId.length - 1) + activityIndex * 3;
 
@@ -646,7 +671,7 @@ function makeSession(
         sessionCount,
         activityIndex,
         startOffset,
-        seed
+        seed,
       );
     case "letter-find":
       return makeLetterFind(
@@ -655,7 +680,7 @@ function makeSession(
         sessionCount,
         activityIndex,
         startOffset,
-        seed
+        seed,
       );
     case "eye-pong":
       return makeEyePong(
@@ -663,7 +688,7 @@ function makeSession(
         sessionIndex,
         activityIndex,
         startOffset,
-        seed
+        seed,
       );
     case "inhibition-challenge":
       return makeInhibitionChallenge(
@@ -672,7 +697,7 @@ function makeSession(
         sessionCount,
         activityIndex,
         startOffset,
-        seed
+        seed,
       );
     default:
       return makeMotorSequenceBuilder(
@@ -681,7 +706,7 @@ function makeSession(
         sessionCount,
         activityIndex,
         startOffset,
-        seed
+        seed,
       );
   }
 }
@@ -695,10 +720,10 @@ const seedSessions = patientPlans.flatMap((plan) =>
         sessionIndex,
         plan.counts[activityIndex] ?? 0,
         activityIndex,
-        plan.startOffset
-      )
-    )
-  )
+        plan.startOffset,
+      ),
+    ),
+  ),
 );
 
 module.exports = {

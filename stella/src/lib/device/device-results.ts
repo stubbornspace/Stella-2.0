@@ -253,9 +253,9 @@ export function devicePayloadToRunResult(
   const eventTimestamp = createEventTimestamp(events, summary.generated_utc)
   const common = {
     elapsedSeconds: duration,
-    keyboardLayout: setup.keyboardLayout,
-    keyboardSide: setup.keyboardSide,
-    keyLabels: setup.activity === "letter-find" ? "letters" : setup.keyLabels,
+    keyboardLayout: summary.settings.layout,
+    keyboardSide: summary.settings.side,
+    keyLabels: summary.settings.key_label,
     devicePayload: payload,
   }
 

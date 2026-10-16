@@ -1,0 +1,361 @@
+{
+  "description": "Representative Stella session records. Values are fictitious and must not be treated as patient data.",
+  "sessions": [
+    {
+      "sessionId": "example-letter-target-001",
+      "patientId": "example-patient",
+      "activity": "letter-target",
+      "sessionDate": "2026-10-14T16:00:00.000Z",
+      "status": "completed",
+      "summary": "Captured keyboard exercise session.",
+      "keyboardLayout": "qwerty",
+      "keyboardSide": "full",
+      "keyLabels": "letters",
+      "activeEngagementTimeMinutes": 0.75,
+      "totalSessionDurationMinutes": 0.75,
+      "attemptsPerMinute": 4,
+      "pauseBreakCount": 0,
+      "contentMode": "letters",
+      "itemsPerSession": 2,
+      "audioMode": "metronome",
+      "tempoBpm": 60,
+      "itemsCompleted": 2,
+      "itemsTotal": 2,
+      "totalAttempts": 3,
+      "correctHits": 2,
+      "accuracyPercent": 66.7,
+      "firstAttemptSuccessRatePercent": 50,
+      "meanCorrectLatencyMs": 960,
+      "incorrectAttempts": 1,
+      "eventualAccuracyPercent": 100,
+      "itemCompletionRatePercent": 100,
+      "onBeatAccuracyPercent": 50,
+      "timingVariabilityStdDev": 120,
+      "byKey": [
+        {
+          "keyId": 1,
+          "letter": "A",
+          "trials": 1,
+          "firstAttemptAccuracyPercent": 100,
+          "meanCorrectLatencyMs": 820,
+          "incorrectAttempts": 0,
+          "beat": "metronome"
+        },
+        {
+          "keyId": 2,
+          "letter": "B",
+          "trials": 1,
+          "firstAttemptAccuracyPercent": 0,
+          "meanCorrectLatencyMs": 1100,
+          "incorrectAttempts": 1,
+          "beat": "metronome"
+        }
+      ],
+      "rawEventPayload": {
+        "activity": "letter-target",
+        "elapsedSeconds": 45,
+        "keyboardLayout": "qwerty",
+        "keyboardSide": "full",
+        "keyLabels": "letters",
+        "audioMode": "metronome",
+        "actualBpm": 60,
+        "contentMode": "letters",
+        "stats": [
+          {
+            "letter": "A",
+            "attempts": 1,
+            "timeMs": 820,
+            "targetStartedAt": "2026-10-14T16:00:05.000Z",
+            "completedAt": "2026-10-14T16:00:05.820Z",
+            "attemptEvents": [
+              {
+                "keyId": 1,
+                "pressedLetter": "A",
+                "correct": true,
+                "timestamp": "2026-10-14T16:00:05.820Z",
+                "beatIndex": 5,
+                "beatOffsetMs": -180,
+                "beatOffsetBasis": "nearest-beat"
+              }
+            ]
+          },
+          {
+            "letter": "B",
+            "attempts": 2,
+            "timeMs": 1100,
+            "targetStartedAt": "2026-10-14T16:00:12.000Z",
+            "completedAt": "2026-10-14T16:00:13.100Z",
+            "attemptEvents": [
+              {
+                "keyId": 7,
+                "pressedLetter": "G",
+                "correct": false,
+                "timestamp": "2026-10-14T16:00:12.410Z"
+              },
+              {
+                "keyId": 2,
+                "pressedLetter": "B",
+                "correct": true,
+                "timestamp": "2026-10-14T16:00:13.100Z",
+                "beatIndex": 13,
+                "beatOffsetMs": 100,
+                "beatOffsetBasis": "nearest-beat"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "example-letter-find-001",
+      "patientId": "example-patient",
+      "activity": "letter-find",
+      "sessionDate": "2026-10-14T16:10:00.000Z",
+      "status": "completed",
+      "summary": "Captured keyboard exercise session.",
+      "keyboardLayout": "alphabetical",
+      "keyboardSide": "full",
+      "keyLabels": "letters",
+      "activeEngagementTimeMinutes": 1,
+      "totalSessionDurationMinutes": 1,
+      "attemptsPerMinute": 5,
+      "pauseBreakCount": 0,
+      "contentMode": "words",
+      "wordLength": "0-5",
+      "itemsPerSession": 2,
+      "audioMode": "silent",
+      "itemsCompleted": 2,
+      "itemsTotal": 2,
+      "totalAttempts": 5,
+      "correctHits": 4,
+      "accuracyPercent": 80,
+      "firstAttemptSuccessRatePercent": 75,
+      "meanCorrectLatencyMs": 740,
+      "incorrectAttempts": 1,
+      "eventualAccuracyPercent": 100,
+      "itemCompletionRatePercent": 100,
+      "byWord": [
+        {
+          "word": "CAT",
+          "length": 3,
+          "trials": 1,
+          "firstAttemptAccuracyPercent": 100,
+          "completionTimeMs": 2050,
+          "interKeyIntervalMs": 615,
+          "beat": "silent"
+        },
+        {
+          "word": "DOG",
+          "length": 3,
+          "trials": 1,
+          "firstAttemptAccuracyPercent": 66.7,
+          "completionTimeMs": 2780,
+          "interKeyIntervalMs": 740,
+          "beat": "silent"
+        }
+      ],
+      "rawEventPayload": {
+        "activity": "letter-find",
+        "elapsedSeconds": 60,
+        "keyboardLayout": "alphabetical",
+        "keyboardSide": "full",
+        "keyLabels": "letters",
+        "audioMode": "silent",
+        "contentMode": "words",
+        "wordLength": "0-5",
+        "selectedWords": ["CAT", "DOG"],
+        "stats": [
+          {
+            "letter": "C",
+            "attempts": 1,
+            "timeMs": 690,
+            "attemptEvents": [
+              {
+                "keyId": 3,
+                "pressedLetter": "C",
+                "correct": true,
+                "timestamp": "2026-10-14T16:10:04.690Z"
+              }
+            ]
+          },
+          {
+            "letter": "D",
+            "attempts": 2,
+            "timeMs": 790,
+            "attemptEvents": [
+              {
+                "keyId": 5,
+                "pressedLetter": "E",
+                "correct": false,
+                "timestamp": "2026-10-14T16:10:12.300Z"
+              },
+              {
+                "keyId": 4,
+                "pressedLetter": "D",
+                "correct": true,
+                "timestamp": "2026-10-14T16:10:12.790Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "example-eye-pong-001",
+      "patientId": "example-patient",
+      "activity": "eye-pong",
+      "sessionDate": "2026-10-14T16:20:00.000Z",
+      "status": "completed",
+      "summary": "Captured keyboard exercise session.",
+      "keyboardLayout": "qwerty",
+      "keyboardSide": "full",
+      "keyLabels": "blank",
+      "activeEngagementTimeMinutes": 0.5,
+      "totalSessionDurationMinutes": 0.5,
+      "pauseBreakCount": 0,
+      "actualBpm": 60,
+      "mode": "left-right",
+      "pattern": "horizontal",
+      "targetCount": 4,
+      "targetChanges": 4,
+      "completionRatePercent": 100,
+      "audioMode": "metronome",
+      "tempoBpm": 60,
+      "intervalMs": 1000,
+      "rawEventPayload": {
+        "activity": "eye-pong",
+        "elapsedSeconds": 30,
+        "keyboardLayout": "qwerty",
+        "keyboardSide": "full",
+        "keyLabels": "blank",
+        "actualBpm": 60,
+        "audioMode": "metronome",
+        "completionRatePercent": 100,
+        "mode": "left-right",
+        "targetCount": 4,
+        "targetChanges": 4,
+        "cueEvents": [
+          {
+            "sequence": 1,
+            "keyId": 1,
+            "letter": "Q",
+            "scheduledOffsetMs": 1000,
+            "presentedOffsetMs": 1008,
+            "presentationDelayMs": 8
+          },
+          {
+            "sequence": 2,
+            "keyId": 10,
+            "letter": "P",
+            "scheduledOffsetMs": 2000,
+            "presentedOffsetMs": 2011,
+            "presentationDelayMs": 11
+          },
+          {
+            "sequence": 3,
+            "keyId": 1,
+            "letter": "Q",
+            "scheduledOffsetMs": 3000,
+            "presentedOffsetMs": 3007,
+            "presentationDelayMs": 7
+          },
+          {
+            "sequence": 4,
+            "keyId": 10,
+            "letter": "P",
+            "scheduledOffsetMs": 4000,
+            "presentedOffsetMs": 4010,
+            "presentationDelayMs": 10
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "example-inhibition-challenge-001",
+      "patientId": "example-patient",
+      "activity": "inhibition-challenge",
+      "sessionDate": "2026-10-14T16:30:00.000Z",
+      "status": "completed",
+      "summary": "50% Go accuracy across 4 completed trials.",
+      "keyboardLayout": "qwerty",
+      "keyboardSide": "full",
+      "keyLabels": "letters",
+      "activeEngagementTimeMinutes": 0.2,
+      "totalSessionDurationMinutes": 0.2,
+      "attemptsPerMinute": 20,
+      "pauseBreakCount": 0,
+      "trialCount": 4,
+      "rulePreset": "balanced",
+      "goAccuracyPercent": 50,
+      "noGoAccuracyPercent": 100,
+      "missedGoRatePercent": 50,
+      "meanGoLatencyMs": 430,
+      "responseWindowMs": 1200,
+      "cueSpeedBpm": 60,
+      "rawEventPayload": {
+        "activity": "inhibition-challenge",
+        "elapsedSeconds": 12,
+        "keyboardLayout": "qwerty",
+        "keyboardSide": "full",
+        "keyLabels": "letters",
+        "trialCount": 4,
+        "rulePreset": "balanced",
+        "responseWindowMs": 1200,
+        "cueSpeedBpm": 60,
+        "trials": [
+          {
+            "trialIndex": 0,
+            "cue": "go",
+            "targetKeyId": 6,
+            "targetLetter": "G",
+            "cueOffsetMs": 1000,
+            "windowEndOffsetMs": 2200,
+            "windowClosed": true,
+            "outcome": "correct",
+            "presses": [
+              {
+                "keyId": 6,
+                "letter": "G",
+                "offsetMs": 1430,
+                "correct": true
+              }
+            ]
+          },
+          {
+            "trialIndex": 1,
+            "cue": "no-go",
+            "targetKeyId": 8,
+            "targetLetter": "J",
+            "cueOffsetMs": 3500,
+            "windowEndOffsetMs": 4700,
+            "windowClosed": true,
+            "outcome": "correct",
+            "presses": []
+          },
+          {
+            "trialIndex": 2,
+            "cue": "go",
+            "targetKeyId": 4,
+            "targetLetter": "F",
+            "cueOffsetMs": 6000,
+            "windowEndOffsetMs": 7200,
+            "windowClosed": true,
+            "outcome": "missed",
+            "presses": []
+          },
+          {
+            "trialIndex": 3,
+            "cue": "no-go",
+            "targetKeyId": 7,
+            "targetLetter": "H",
+            "cueOffsetMs": 8500,
+            "windowEndOffsetMs": 9700,
+            "windowClosed": true,
+            "outcome": "correct",
+            "presses": []
+          }
+        ]
+      }
+    }
+  ]
+}

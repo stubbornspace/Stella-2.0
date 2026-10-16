@@ -23,6 +23,7 @@ export interface BaseSession {
   sessionDate: string
   status: SessionStatus
   summary: string
+  sessionNotes?: string
   rawEventPayload?: unknown
   musicPlaybackRate?: number
   activeEngagementTimeMinutes?: number
@@ -230,6 +231,4 @@ export interface ExerciseSummary {
   activity: ExerciseType
   sessions: number
   lastSessionDate: string
-  primaryMetric: string
-  secondaryMetric: string
 }

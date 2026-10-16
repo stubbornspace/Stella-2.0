@@ -1,5 +1,6 @@
 import { getValidIdToken } from "@/lib/auth"
 import { getRuntimeConfig } from "@/lib/runtime-config"
+import { getSelectedClinicId } from "@/lib/clinic-session"
 import { getPatient, getPatientSessions } from "@/api/stella"
 import { exerciseDefinitions } from "@/config/exercises"
 import type { ExerciseSession, ExerciseType, MetricFormat } from "@/types"
@@ -33,6 +34,9 @@ async function remoteRequest<T>(path: string, init?: RequestInit) {
     headers: {
       Authorization: `Bearer ${idToken}`,
       "Content-Type": "application/json",
+      ...(getSelectedClinicId()
+        ? { "X-Stella-Clinic-Id": getSelectedClinicId() }
+        : {}),
       ...(init?.headers ?? {}),
     },
   })

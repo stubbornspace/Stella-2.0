@@ -160,7 +160,7 @@ const patientPlans = [
     patientId: "p-1021",
     startOffset: 84,
     activities: exerciseTypes,
-    counts: [9, 7, 4, 7, 5],
+    counts: [9, 7, 4, 7],
   },
   {
     patientId: "p-1022",
@@ -175,11 +175,8 @@ const patientPlans = [
   {
     patientId: "p-1023",
     startOffset: 88,
-    activities: [
-      "letter-find",
-      "motor-sequence-builder",
-    ] satisfies ExerciseType[],
-    counts: [6, 5],
+    activities: ["letter-find"] satisfies ExerciseType[],
+    counts: [6],
   },
   {
     patientId: "p-1024",
@@ -195,7 +192,7 @@ const patientPlans = [
     patientId: "p-1025",
     startOffset: 62,
     activities: exerciseTypes,
-    counts: [5, 5, 4, 4, 3],
+    counts: [5, 5, 4, 4],
   },
   {
     patientId: "p-1026",
@@ -213,19 +210,14 @@ const patientPlans = [
     activities: [
       "letter-target",
       "inhibition-challenge",
-      "motor-sequence-builder",
     ] satisfies ExerciseType[],
-    counts: [6, 5, 4],
+    counts: [6, 5],
   },
   {
     patientId: "p-1028",
     startOffset: 45,
-    activities: [
-      "letter-find",
-      "eye-pong",
-      "motor-sequence-builder",
-    ] satisfies ExerciseType[],
-    counts: [5, 4, 3],
+    activities: ["letter-find", "eye-pong"] satisfies ExerciseType[],
+    counts: [5, 4],
   },
   {
     patientId: "p-1029",
@@ -242,12 +234,8 @@ const patientPlans = [
   {
     patientId: "p-1031",
     startOffset: 33,
-    activities: [
-      "letter-target",
-      "letter-find",
-      "motor-sequence-builder",
-    ] satisfies ExerciseType[],
-    counts: [8, 6, 5],
+    activities: ["letter-target", "letter-find"] satisfies ExerciseType[],
+    counts: [8, 6],
   },
   {
     patientId: "p-1032",
@@ -271,19 +259,14 @@ const patientPlans = [
       "letter-target",
       "eye-pong",
       "inhibition-challenge",
-      "motor-sequence-builder",
     ] satisfies ExerciseType[],
-    counts: [5, 4, 4, 3],
+    counts: [5, 4, 4],
   },
   {
     patientId: "p-1035",
     startOffset: 18,
-    activities: [
-      "letter-find",
-      "eye-pong",
-      "motor-sequence-builder",
-    ] satisfies ExerciseType[],
-    counts: [5, 4, 4],
+    activities: ["letter-find", "eye-pong"] satisfies ExerciseType[],
+    counts: [5, 4],
   },
 ]
 
@@ -818,6 +801,10 @@ function makeEyePong(
         ? "music"
         : "metronome"
   const mode = sessionIndex % 2 === 0 ? "left-right" : "random"
+  const keyboardSide =
+    mode === "left-right"
+      ? "full"
+      : (["left", "right", "full"] as const)[sessionIndex % 3]
   const tempoBpm =
     audioMode === "metronome" ? 54 + (sessionIndex % 5) * 7 : undefined
   const musicPlaybackRate =
@@ -875,6 +862,7 @@ function makeEyePong(
 
   return {
     ...base,
+    keyboardSide,
     mode,
     pattern: mode === "left-right" ? "horizontal" : "mixed",
     targetCount: EYE_PONG_TARGET_COUNT,
@@ -896,6 +884,7 @@ function makeEyePong(
       completionRatePercent: getEyePongCompletionRate(targetChanges),
       cueEvents,
       elapsedSeconds,
+      keyboardSide,
       mode,
       targetCount: EYE_PONG_TARGET_COUNT,
       targetChanges,

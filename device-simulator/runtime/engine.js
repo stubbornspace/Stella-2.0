@@ -28,7 +28,7 @@ const DEFAULT_CONFIG = {
   // Inhibition Challenge (SPEC §3, §4.5)
   response_window_ms: 1500,
   nogo_percent: 40,
-  wait_percent: 10,
+  wait_percent: 0,
   // Motor Sequence Builder (SPEC §3, §4.6)
   sequence_start_length: 2,
   sequence_progression: true,
@@ -64,10 +64,8 @@ export class StellaEngine {
     if (this.config.response_window_ms < 500) this.config.response_window_ms = 500;
     if (this.config.response_window_ms > 10000) this.config.response_window_ms = 10000;
     if (this.config.nogo_percent < 0) this.config.nogo_percent = 0;
-    if (this.config.wait_percent < 0) this.config.wait_percent = 0;
-    if (this.config.nogo_percent + this.config.wait_percent > 100) {
-      this.config.wait_percent = 100 - this.config.nogo_percent;
-    }
+    if (this.config.nogo_percent > 100) this.config.nogo_percent = 100;
+    this.config.wait_percent = 0;
     if (this.config.sequence_start_length < 2) this.config.sequence_start_length = 2;
     if (this.config.sequence_start_length > 5) this.config.sequence_start_length = 5;
     if (this.config.sequence_max_length < this.config.sequence_start_length)
@@ -138,8 +136,8 @@ export class StellaEngine {
       this._playThen("follow_lights", () => this._pongBegin());
     } else if (this.config.activity === "inhibition_challenge") {
       this.phase = PHASE.INSTRUCTION;
-      this._emitStatus("Green means hit. Red means stop. Yellow means wait.");
-      this._playThen("ic_instructions", () => this._icBegin());
+      this._emitStatus("Green means go. Red means stop.");
+      this._playThen("ready_go", () => this._icBegin());
     } else {
       this.itemIndex = 0;
       this._presentItem();
@@ -558,8 +556,8 @@ export class StellaEngine {
 
   _icCueSequence() {
     const cfg = this.config;
-    const cues = ["go", "nogo", "wait"];
-    const weights = [100 - cfg.nogo_percent - cfg.wait_percent, cfg.nogo_percent, cfg.wait_percent];
+    const cues = ["go", "nogo"];
+    const weights = [100 - cfg.nogo_percent, cfg.nogo_percent];
     const exact = weights.map((weight) => cfg.items * weight / 100);
     const counts = exact.map(Math.floor);
     const remaining = cfg.items - counts.reduce((sum, count) => sum + count, 0);
@@ -597,8 +595,7 @@ export class StellaEngine {
     this.icIncorrect = [];
 
     this._idleAllFunctioning();
-    const color = this.icCueType === "go" ? "waiting"
-      : this.icCueType === "nogo" ? "incorrect" : "wait_cue";
+    const color = this.icCueType === "go" ? "waiting" : "incorrect";
     this._setKey(key, color);
     this._emitBoard("ic-cue");
 
@@ -777,23 +774,21 @@ export class StellaEngine {
     if (cfg.activity === "inhibition_challenge") {
       const trialEv = ev.filter((e) => e.type === "item_complete");
       const byType = (t) => trialEv.filter((e) => e.requested_content === t);
-      const go = byType("go"), nogo = byType("nogo"), wait = byType("wait");
+      const go = byType("go"), nogo = byType("nogo");
       const goCorrect = go.filter((e) => e.outcome === "correct_go");
       const nogoOk = nogo.filter((e) => e.outcome === "successful_inhibition");
-      const waitOk = wait.filter((e) => e.outcome === "successful_inhibition");
-      const falseResp = [...nogo, ...wait].filter((e) => e.outcome === "false_response");
+      const falseResp = nogo.filter((e) => e.outcome === "false_response");
       const goLat = goCorrect.map((e) => e.response_latency_ms).filter((x) => x != null);
       icMetrics = {
         go_trial_accuracy: pct(goCorrect.length, go.length),
         nogo_inhibition_accuracy: pct(nogoOk.length, nogo.length),
-        false_response_rate: pct(falseResp.length, nogo.length + wait.length),
+        false_response_rate: pct(falseResp.length, nogo.length),
         missed_go_rate: pct(go.length - goCorrect.length, go.length),
         mean_go_response_latency_ms: goLat.length ? Math.round(mean(goLat)) : null,
       };
       icByCueType = [
         { cue_type: "Go", trials: go.length, accuracy: pct(goCorrect.length, go.length) },
         { cue_type: "No-Go", trials: nogo.length, accuracy: pct(nogoOk.length, nogo.length) },
-        { cue_type: "Wait", trials: wait.length, accuracy: pct(waitOk.length, wait.length) },
       ].filter((r) => r.trials > 0);
     }
 

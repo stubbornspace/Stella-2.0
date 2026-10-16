@@ -16,7 +16,6 @@ const activityNames = {
   inhibition_challenge: "Inhibition Challenge",
   letter_find: "Letter Find",
   letter_target: "Letter Target",
-  motor_sequence_builder: "Motor Sequence Builder",
 };
 
 let currentConfig = null;

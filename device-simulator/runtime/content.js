@@ -144,7 +144,6 @@ export const STATE_COLORS = {
   correct:   "#00ff00",
   incorrect: "#ff4444",
   beat:      "#7fd0ff",
-  wait_cue:  "#ffd400",   // Inhibition Challenge "Wait" cue — steady, not a flash
   invalid:   "#9aa0ab",   // a reserved position was pressed (moves with layout, §4.0)
 };
 
@@ -161,7 +160,7 @@ export const CLIPS = {
   lt_single_beat: "Hit the green letter to the beat. Ready. Go.",
   lt_multi_beat: "Hit the green letters to the beat. Ready. Go.",
   follow_lights: "Follow the lights with your eyes. Ready. Go.",
-  ic_instructions: "Green means hit. Red means stop. Yellow means wait. Ready. Go.",
+  ic_instructions: "Green means go. Red means stop. Ready. Go.",
   msb_watch: "Watch the letters. Then repeat the sequence. Ready. Go.",
   msb_your_turn: "Your turn. Ready. Go.",
 };

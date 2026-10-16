@@ -1,5 +1,9 @@
 # Stella Exercise Data Model
 
+Representative JSON payloads for every exercise are available in
+[`exercise-data-examples.json`](./exercise-data-examples.json). The examples show both
+the saved session/report fields and the runtime events retained in `rawEventPayload`.
+
 This document defines the session-level data model for each Stella exercise. Each table is explicit: metadata, configuration, and metrics are repeated per exercise so each exercise can stand on its own.
 
 ## Runtime boundaries
@@ -14,7 +18,6 @@ The device API uses a separate wire model rather than sending Stella's UI object
 | `letter-find` | `letter_find` | `letter-find` |
 | `eye-pong` | `eye_pong` | `eye-pong` |
 | `inhibition-challenge` | `inhibition_challenge` | `inhibition-challenge` |
-| `motor-sequence-builder` | `motor_sequence_builder` | `motor-sequence-builder` |
 | `keyboardLayout` | `layout` | Configuration fields on the saved session |
 | `keyboardSide` | `side` | Configuration fields on the saved session |
 | `keyLabels` | `key_label` | Configuration fields on the saved session |
@@ -162,6 +165,8 @@ Exact integration shapes and endpoints are defined in `docs/api-reference.md`. T
 | sessionDate | metadata | date | Timestamp when session is completed. | Date the session was completed. |
 | status | metric | enum | Session result status: `completed` or `ended-early`. | Whether the session reached its endpoint. |
 | summary | metric | string | Generated from result values. | Human-readable session summary. |
+| sessionNotes | clinician input | string | Optional notes saved after the session. | Clinician observations for the session. |
+| keyboardSide | config | enum | Fixed to `full` for Left / Right; selected `full`, `left`, or `right` for Random. | Keyboard area used for target presentation. |
 | pattern | config | enum | User-selected config: `left-right` or `random`. | Target movement pattern. |
 | targetChanges | config | number | User-selected config. | Number of target changes configured. |
 | audioMode | config | enum | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
@@ -186,23 +191,18 @@ Exact integration shapes and endpoints are defined in `docs/api-reference.md`. T
 
 ### Eye Pong Session Report Fields
 
+The UI intentionally presents configuration and clinician-authored notes only.
+Completion and timing values remain stored in the session payload for protocol
+operation and auditing, but are not presented as patient performance results.
+
 | Report section | Field | Show as | Include when | Notes |
 |---|---|---|---|---|
-| Summary | sessionDate | Date | Always | Date the session was completed. |
-| Summary | status | Completed / Ended early | Always | Top-level session state. |
-| Summary | summary | Sentence summary | Always | Generated from target changes completed. |
 | Configuration | pattern | Left / Right or Random | Always | Target movement pattern used. |
+| Configuration | keyboardSide | Full / Left / Right | Random only | Left / Right always uses Full. |
 | Configuration | targetChanges | Count | Always | Configured number of target changes. |
 | Configuration | audioMode | Silent / Metronome / Music | Always | Shows support mode. |
 | Configuration | tempoBpm | BPM | When audio timing is active | Hide when audio mode is silent. |
-| Results | targetChangesCompleted | `targetChangesCompleted / targetChangesTotal` | Always | Primary completion metric. |
-| Results | completionRatePercent | Percent | Always | `targetChangesCompleted / targetChangesTotal * 100`. |
-| Results | mode | Display label | Always | Human-readable pattern label. |
-| Results | tempoLabel | Display label | Always | Human-readable tempo/audio result. |
-| Results | onBeatAccuracyPercent | Percent | When captured | Rhythm metric if beat/music alignment is tracked. |
-| Results | timingVariabilityStdDev | Milliseconds std dev | When captured | Rhythm consistency metric. |
-| Results | activeEngagementTimeMinutes | Minutes | When captured | Engagement duration metric. |
-| Results | attemptsPerMinute | Target changes per minute | When captured | Use target changes completed as the activity count. |
+| Notes | sessionNotes | Editable text | Always | Clinician observations, up to 2,000 characters. |
 
 ## Inhibition Challenge
 
@@ -214,7 +214,7 @@ Exact integration shapes and endpoints are defined in `docs/api-reference.md`. T
 | sessionDate | metadata | date | Timestamp when session is completed. | Date the session was completed. |
 | status | metric | enum | Session result status: `completed` or `ended-early`. | Whether the session reached its endpoint. |
 | summary | metric | string | Generated from result values. | Human-readable session summary. |
-| trialCount | config | number | User-selected config. | Number of Go / Stop / Wait trials configured. |
+| trialCount | config | number | User-selected config. | Number of Go / Stop trials configured. |
 | rulePreset | config | enum | User-selected config: `balanced`, `go-heavy`, or `stop-heavy`. | Trial mix preset. |
 | responseWindowMs | config | number | User-selected config. | Allowed response window in milliseconds. |
 | cueSpeedBpm | config | number | User-selected config. | Cue presentation speed in beats per minute. |
@@ -255,63 +255,6 @@ Exact integration shapes and endpoints are defined in `docs/api-reference.md`. T
 | Results | activeEngagementTimeMinutes | Minutes | When captured | Engagement duration metric. |
 | Results | attemptsPerMinute | Trials per minute | When captured | `trialCount / activeEngagementTimeMinutes`. |
 
-## Motor Sequence Builder
-
-| Field | Type | Value type | Source / calculation | Description |
-|---|---|---|---|---|
-| sessionId | metadata | string | Generated when session is saved. | Unique identifier for the completed session. |
-| patientId | metadata | string | Selected patient record. | Patient identifier associated with the session. |
-| activity | config | enum | Fixed value from exercise config: `Motor Sequence Builder`. | Exercise name. |
-| sessionDate | metadata | date | Timestamp when session is completed. | Date the session was completed. |
-| status | metric | enum | Session result status: `completed` or `ended-early`. | Whether the session reached its endpoint. |
-| summary | metric | string | Generated from result values. | Human-readable session summary. |
-| contentType | config | enum | User-selected config: `letter-sequence` or `word-sequence`. | Sequence content type. |
-| sequenceLength | config | number | User-selected config. | Number of steps in each sequence. |
-| sequenceCount | config | number | User-selected config. | Number of sequences configured for the session. |
-| presentationSpeedBpm | config | number | User-selected config. | Speed at which the sequence is presented. |
-| audioMode | config | enum | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
-| sequenceCompletionRatePercent | metric | number | Completed sequences divided by configured sequences. | Percent of configured sequences completed. |
-| firstAttemptSequenceAccuracyPercent | metric | number | First-attempt successful sequences divided by total attempted sequences. | Percent of sequences completed correctly on first attempt. |
-| longestCompletedSequence | metric | number | Max sequence length completed during the session. | Longest successful sequence. |
-| meanCompletionTimeMs | metric | number | Average completion time across attempted sequences. | Mean sequence completion time. |
-| lettersCompletedPerSequence | metric | number | Completed steps or letters divided by attempted sequences. | Sequence progress count. |
-| breakdownPoint | metric | string | First repeated error position in sequence. | Step where errors typically begin. |
-| averageResponseLatencyMs | metric | number | Average response latency across sequence steps. | Reserved until per-step latency is captured. |
-| latencyVariabilityStdDev | metric | number | Standard deviation of per-step latency values. | Reserved timing variability metric. |
-| beatActive | config | boolean | `audioMode` is `metronome` or `music`. | Whether rhythm timing should be evaluated. |
-| beatTimestamp | metric | datetime | Captured per sequence step when beat is active. | Nearest beat timestamp used for timing offset. |
-| onBeatAccuracyPercent | metric | number | Sequence steps within the on-beat window divided by total beat-active steps. | Percent of sequence responses aligned to beat. |
-| timingVariabilityStdDev | metric | number | Standard deviation of beat offsets. | Rhythm consistency metric. |
-| errorDirectionClassification | metric | enum | Most common direction among incorrect sequence selections. | Direction pattern: `left`, `right`, `above`, `below`, or `random`. |
-| directionalConsistencyPercent | metric | number | Errors in dominant direction divided by total errors. | How consistent the error direction pattern is. |
-| activeEngagementTimeMinutes | metric | number | Active interaction time excluding pauses. | Reserved until timing capture is implemented. |
-| totalSessionDurationMinutes | metric | number | Finish timestamp minus start timestamp. | Total elapsed session duration. |
-| attemptsPerMinute | metric | number | Sequence step attempts divided by active engagement time. | Session pacing metric. |
-| pauseBreakCount | metric | number | Count of pause/break events. | Optional engagement metric. |
-
-### Motor Sequence Builder Session Report Fields
-
-| Report section | Field | Show as | Include when | Notes |
-|---|---|---|---|---|
-| Summary | sessionDate | Date | Always | Date the session was completed. |
-| Summary | status | Completed / Ended early | Always | Top-level session state. |
-| Summary | summary | Sentence summary | Always | Generated from longest completed sequence and completion rate. |
-| Configuration | contentType | Letter sequence / Word sequence | Always | Sequence content type used. |
-| Configuration | sequenceLength | Count | Always | Number of steps per sequence. |
-| Configuration | sequenceCount | Count | Always | Number of configured sequences. |
-| Configuration | presentationSpeedBpm | BPM | Always | Sequence presentation speed. |
-| Configuration | audioMode | Silent / Metronome / Music | Always | Shows support mode. |
-| Results | sequenceCompletionRatePercent | Percent | Always | Primary completion metric. |
-| Results | firstAttemptSequenceAccuracyPercent | Percent | Always | Clean first-attempt sequence performance. |
-| Results | longestCompletedSequence | Count | Always | Longest successful sequence reached. |
-| Results | meanCompletionTimeMs | Milliseconds or seconds | Always | Average sequence completion time. |
-| Results | lettersCompletedPerSequence | Count | When captured | Detailed sequence progress metric. |
-| Results | breakdownPoint | Step or letter | When captured | Where sequence errors typically begin. |
-| Results | onBeatAccuracyPercent | Percent | When captured | Rhythm metric if beat/music alignment is tracked. |
-| Results | timingVariabilityStdDev | Milliseconds std dev | When captured | Rhythm consistency metric. |
-| Results | activeEngagementTimeMinutes | Minutes | When captured | Engagement duration metric. |
-| Results | attemptsPerMinute | Sequence steps per minute | When captured | Sequence step attempts divided by active engagement time. |
-
 ## Common Fields Across Exercises
 
 | Field | Type | Value type | Applies to | Source / calculation | Description |
@@ -322,13 +265,13 @@ Exact integration shapes and endpoints are defined in `docs/api-reference.md`. T
 | sessionDate | metadata | date | All exercises | Timestamp when session is completed. | Date the session was completed. |
 | status | metric | enum | All exercises | Session result status: `completed` or `ended-early`. | Whether the session reached its endpoint. |
 | summary | metric | string | All exercises | Generated from result values. | Human-readable session summary. |
-| audioMode | config | enum | Letter Target, Letter Find, Eye Pong, Motor Sequence Builder | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
+| audioMode | config | enum | Letter Target, Letter Find, Eye Pong | User-selected config: `silent`, `metronome`, or `music`. | Audio support used during the session. |
 | tempoBpm | config | number | Letter Target, Letter Find, Eye Pong | User-selected config when audio timing is active. | Tempo in beats per minute. |
 | beatActive | config | boolean | All exercises | Derived from audio/cue timing when beat alignment is enabled. | Whether rhythm timing should be evaluated. |
 | beatTimestamp | metric | datetime | All exercises | Captured per attempt/trial/step when beat is active. | Nearest beat timestamp used for timing offset. |
 | onBeatAccuracyPercent | metric | number | All exercises | Beat-aligned attempts divided by total beat-active attempts. | Percent of actions aligned to beat. |
 | timingVariabilityStdDev | metric | number | All exercises | Standard deviation of beat offsets. | Rhythm consistency metric. |
-| averageResponseLatencyMs | metric | number | Letter Target, Letter Find; reserved for Eye Pong and Motor Sequence Builder | Average of per-attempt or per-step response latencies. | Average response latency. |
+| averageResponseLatencyMs | metric | number | Letter Target, Letter Find; reserved for Eye Pong | Average of per-attempt or per-step response latencies. | Average response latency. |
 | latencyVariabilityStdDev | metric | number | All exercises | Standard deviation of per-attempt/trial/step latency values. | Response timing variability metric. |
 | errorDirectionClassification | metric | enum | All exercises | Most common direction among incorrect responses when spatial errors are captured. | Error pattern: `left`, `right`, `above`, `below`, or `random`. |
 | directionalConsistencyPercent | metric | number | All exercises | Errors in dominant direction divided by total errors. | How consistent the error direction pattern is. |

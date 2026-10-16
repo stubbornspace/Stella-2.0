@@ -17,7 +17,7 @@ const baseConfig: DeviceConfig = {
   timeout_ms: 5000,
   response_window_ms: 1500,
   nogo_percent: 40,
-  wait_percent: 10,
+  wait_percent: 0,
   sequence_start_length: 2,
   sequence_progression: true,
   sequence_max_length: 5,
@@ -53,11 +53,11 @@ function getInhibitionMix(
 ) {
   switch (setup.rulePreset) {
     case "go-heavy":
-      return { nogo_percent: 20, wait_percent: 10 }
+      return { nogo_percent: 30, wait_percent: 0 }
     case "stop-heavy":
-      return { nogo_percent: 60, wait_percent: 10 }
+      return { nogo_percent: 70, wait_percent: 0 }
     default:
-      return { nogo_percent: 40, wait_percent: 10 }
+      return { nogo_percent: 50, wait_percent: 0 }
   }
 }
 
@@ -91,6 +91,9 @@ export function toDeviceConfig(
     case "eye-pong":
       return {
         ...common,
+        layout: "qwerty",
+        side: setup.mode === "left-right" ? "full" : setup.keyboardSide,
+        key_label: "blank",
         items: setup.targetCount,
         pong_mode: setup.mode === "left-right" ? "left_right" : "random",
       }

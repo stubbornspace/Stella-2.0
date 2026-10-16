@@ -22,6 +22,6 @@ PORT=4180 npm start
 npm test
 ```
 
-The tests start the API on ephemeral ports and cover Letter Target, Inhibition Challenge, Motor Sequence Builder, result exports, and configuration validation.
+The tests start the API on ephemeral ports and cover Letter Target, Inhibition Challenge, result exports, and configuration validation.
 
 See `../docs/api-reference.md` for the complete device contract and `../stella/public/runtime-config.device.example.json` for Stella's device-mode configuration.

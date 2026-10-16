@@ -80,7 +80,6 @@ function normalizeConfig(partial, current) {
       "letter_find",
       "eye_pong",
       "inhibition_challenge",
-      "motor_sequence_builder",
     ]);
   if ("layout" in partial)
     next.layout = enumValue("layout", partial.layout, [
@@ -149,12 +148,13 @@ function normalizeConfig(partial, current) {
       100,
     );
   if ("wait_percent" in partial)
-    next.wait_percent = numberValue(
+    numberValue(
       "wait_percent",
       partial.wait_percent,
       0,
       100,
     );
+  next.wait_percent = 0;
   if ("sequence_start_length" in partial)
     next.sequence_start_length = numberValue(
       "sequence_start_length",
@@ -180,9 +180,6 @@ function normalizeConfig(partial, current) {
     next.participant = partial.participant.trim().slice(0, 32);
   }
 
-  const nogo = next.nogo_percent ?? current.nogo_percent;
-  const wait = next.wait_percent ?? current.wait_percent;
-  if (nogo + wait > 100) next.wait_percent = 100 - nogo;
   const sequenceStart =
     next.sequence_start_length ?? current.sequence_start_length;
   const sequenceMax = next.sequence_max_length ?? current.sequence_max_length;

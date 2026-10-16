@@ -40,13 +40,7 @@ export const exerciseControlDefinitions: ExerciseControlDefinition[] = [
   {
     id: "inhibition-challenge",
     availability: "available",
-    setupSummary: "Configure Go, No-Go and Wait response-control trials.",
-  },
-  {
-    id: "motor-sequence-builder",
-    availability: "available",
-    setupSummary:
-      "Configure presented letter or word sequences for guided reproduction.",
+    setupSummary: "Configure Go and Stop response-control trials.",
   },
 ]
 
@@ -84,7 +78,7 @@ const defaultEyePongSetup: EyePongSetup = {
   activity: "eye-pong",
   keyboardLayout: "qwerty",
   keyboardSide: "full",
-  keyLabels: "letters",
+  keyLabels: "blank",
   mode: "left-right",
   targetCount: 4,
   audioMode: "metronome",
@@ -128,7 +122,6 @@ const keyboardRuntimeExerciseTypes: KeyboardRuntimeExerciseType[] = [
   "letter-find",
   "eye-pong",
   "inhibition-challenge",
-  "motor-sequence-builder",
 ]
 
 export function getDefaultExerciseSetup(
@@ -146,6 +139,8 @@ export function normalizeExerciseSetup(setup: ExerciseSetup): ExerciseSetup {
   if (normalized.activity === "letter-find") {
     return {
       ...normalized,
+      keyboardSide:
+        normalized.contentMode === "words" ? "full" : normalized.keyboardSide,
       keyLabels: "letters",
       wordLength: normalizeWordLengthRange(normalized.wordLength),
     }
@@ -154,7 +149,20 @@ export function normalizeExerciseSetup(setup: ExerciseSetup): ExerciseSetup {
   if (normalized.activity === "letter-target") {
     return {
       ...normalized,
+      keyboardSide:
+        normalized.contentMode === "words" ? "full" : normalized.keyboardSide,
+      keyLabels: "letters",
       wordLength: normalizeWordLengthRange(normalized.wordLength),
+    }
+  }
+
+  if (normalized.activity === "eye-pong") {
+    return {
+      ...normalized,
+      keyboardLayout: "qwerty",
+      keyboardSide:
+        normalized.mode === "left-right" ? "full" : normalized.keyboardSide,
+      keyLabels: "blank",
     }
   }
 
